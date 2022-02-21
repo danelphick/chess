@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QWidget, QLabel
 from PySide6 import QtWidgets
 
 
-class MoveList(QWidget):
+class MoveList(QtWidgets.QScrollArea):
     MOVE_STYLE = """
     padding: 4px 4px 4px 2px;
     color: white;
@@ -15,19 +15,20 @@ class MoveList(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.widget = QWidget()
+        self.setWidget(self.widget)
+
         self.move_grid = QtWidgets.QGridLayout()
         self.move_grid.setSpacing(0)
-        self.setLayout(self.move_grid)
-        self.move_grid.setRowStretch(1, 1)
         self.move_grid.setColumnStretch(3, 1)
+        self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
+        self.widget.setLayout(self.move_grid)
 
     def setMoves(self, moves):
         moves = iter(moves)
         row = 0
         try:
             while True:
-                self.move_grid.setRowStretch(row, 0)
-                self.move_grid.setRowMinimumHeight(row, 1)
                 white_move_label = QLabel(next(moves).san())
                 white_move_label.setStyleSheet(MoveList.MOVE_STYLE)
                 row = row + 1
