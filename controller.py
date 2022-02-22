@@ -48,7 +48,9 @@ class Controller:
 
         if captureSquare is not None:
             self.chess_board.capturePiece(captureSquare)
-        self.chess_board.movePiece(fromPos, toPos, self.game.getPromotionPiece())
+        self.chess_board.movePiece(
+            fromPos, toPos, promoteTo=self.game.getPromotionPiece()
+        )
 
         castlingRookMove = self.game.getCastlingRookMove()
         if castlingRookMove is not None:
@@ -84,9 +86,7 @@ class Controller:
         self.chess_board.movePiece(fromPos, toPos, reverse=True)
         if captureSquare is not None:
             self.chess_board.addPiece(
-                captureSquare,
-                self.game.board.piece_at(captureSquare),
-                fadeIn=True
+                captureSquare, self.game.board.piece_at(captureSquare), fadeIn=True
             )
 
         castlingRookMove = self.game.getCastlingRookMove()

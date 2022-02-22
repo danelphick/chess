@@ -117,7 +117,13 @@ class ChessBoard(QLabel):
 
         self.anim.addAnimation(anim)
 
-    def movePiece(self, fromPos: int, toPos: int, reverse: bool = False):
+    def movePiece(
+        self,
+        fromPos: int,
+        toPos: int,
+        reverse: bool = False,
+        promoteTo: chess.PieceType = None,
+    ):
         if reverse:
             fromPos, toPos = toPos, fromPos
         piece = self.positions[fromPos]
@@ -127,6 +133,11 @@ class ChessBoard(QLabel):
         anim.setDuration(ANIMATION_DURATION)
         anim.setEasingCurve(QtCore.QEasingCurve.InOutCubic)
         self.addAnimation(anim)
+        if promoteTo:
+            anim.finished.connect(lambda: self.changePiece(toPos, promoteTo))
+
+    def changePiece(self, toPos: int, type: chess.PieceType):
+        self.positions[toPos].changeType(type)
 
     def createPieceFadeAnimation(self, piece: Piece, reverse: bool = False):
         effect = QtWidgets.QGraphicsOpacityEffect(self)
