@@ -1,7 +1,7 @@
 import io
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -102,6 +102,10 @@ game = Game(chess.Board(), pgn)
 window = MainWindow()
 controller = Controller(
     game, window.board_widget, window.move_list, window.previous, window.next
+)
+QtGui.QShortcut(QtGui.QKeySequence.MoveToNextChar, window.next, window.next.click)
+QtGui.QShortcut(
+    QtGui.QKeySequence.MoveToPreviousChar, window.previous, window.previous.click
 )
 window.show()
 
