@@ -18,6 +18,7 @@ from move_list import MoveList
 from game import Game
 
 app = QtWidgets.QApplication(sys.argv)
+app.setWindowIcon(QtGui.QIcon("pieces/white_knight.svg"))
 
 
 class MainWindow(QMainWindow):
@@ -28,12 +29,13 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setWindowTitle("Chess Analyzer")
+
         self.root = QWidget()
         top_layout = QHBoxLayout()
         self.root.setLayout(top_layout)
 
         self.board_widget = ChessBoard()
-        # self.board_widget = ChessBoard(board, pgn)
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         top_layout.addWidget(self.board_widget)
 
