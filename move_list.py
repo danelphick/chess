@@ -80,7 +80,7 @@ class MoveList(QtWidgets.QScrollArea):
     def styleMove(self, turnAndNumber, style, ensureVisible=False):
         if turnAndNumber is not None:
             turn, number = turnAndNumber
-            item = self.move_grid.itemAtPosition(number, 2 - int(turn))
+            item = self.move_grid.itemAtPosition(number - 1, 2 - int(turn))
             if item is not None:
                 item.widget().setStyleSheet(style)
                 if ensureVisible:
