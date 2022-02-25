@@ -1,0 +1,13 @@
+[Result "1-0"]
+[TimeControl "300+0"]
+[ECO "C46"]
+[Opening "Three Knights Opening: Schlechter Variation"]
+[Termination "Normal"]
+
+1. e4 e5 2. Nf3 Nc6 3. Nc3 Bb4 4. Nd5 Nf6 { C46 Three Knights Opening:
+Schlechter Variation } 5. Nxb4 Nxe4 6. Nxc6 bxc6 7. d3 Nc5 8. Nxe5 d6 9. Nf3 O-O
+10. Be2 Re8 11. O-O Bg4 12. Re1 Qf6 13. h3 Bh5 14. Nh2 Bg6 15. Bf3 d5 16. Ng4
+Qf5 17. Ne3 Qe5 18. d4 Qe6 19. dxc5 d4 20. Qxd4 Rad8 21. Qc3 Bf5 22. Bd2 Bxh3
+23. gxh3 Qxh3 24. Bg2 Qh5 25. Nf1 Re6 26. Rxe6 fxe6 27. Qe3 e5 28. Ng3 Qg4 29.
+Bc3 h5 30. Qxe5 h4 31. Nh1 h3 32. Qg3 Rd1+ 33. Rxd1 Qxd1+ 34. Kh2 hxg2 35. Qxg2
+Qh5+ 36. Qh3 Qf5 37. Qxf5 { Black resigns. } 1-0
