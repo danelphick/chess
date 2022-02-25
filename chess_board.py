@@ -5,7 +5,6 @@ from PySide6.QtWidgets import QLabel, QWidget
 
 import chess
 import chess.pgn
-from game import Game
 
 SQUARE_SIZE = 80
 LEFT_MARGIN = 20
@@ -81,9 +80,7 @@ class Piece:
 
 class ChessBoard(QLabel):
     anim: QtCore.QAbstractAnimation
-    game: Game
     positions: dict[int, Piece]
-    pieces: list[Piece]
 
     def __init__(self):
         super().__init__()
@@ -97,7 +94,9 @@ class ChessBoard(QLabel):
         self.drawBoard()
 
     def setupBoard(self, board: chess.Board):
-        # TODO: this should work for an already set up board
+        for piece in self.positions.values():
+            piece.widget.setParent(None)
+        self.positions = {}
         for color in (chess.WHITE, chess.BLACK):
             for type in (
                 chess.PAWN,
