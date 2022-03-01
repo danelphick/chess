@@ -39,6 +39,7 @@ class Controller:
 
     def nextMove(self):
         self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
 
         if not self.game.hasMoreMoves():
             return
@@ -68,6 +69,8 @@ class Controller:
 
     def previousMove(self):
         self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
+        
         if not self.game.goBack():
             return
 
