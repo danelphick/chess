@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtGui import QColor, QColorConstants
@@ -105,6 +107,7 @@ class ChessBoard(QLabel):
         self.anim = None
         self.positions = {}
         self.firstClickSquare = None
+        self.moveHandler = None
 
         canvas = QtGui.QPixmap(WIDTH, HEIGHT)
         canvas.fill(Qt.gray)
@@ -171,14 +174,14 @@ class ChessBoard(QLabel):
             fadeAnim.setStartValue(1)
             fadeAnim.setEndValue(0)
             fadeAnim.setEasingCurve(QEasingCurve.InQuad)
-            fadeAnim.finished.connect(lambda : piece.widget.setParent(None))
+            fadeAnim.finished.connect(lambda: piece.widget.setParent(None))
         fadeAnim.setDuration(ANIMATION_DURATION)
         return fadeAnim
 
     def capturePiece(self, pos: int):
         piece = self.positions[pos]
         fadeAnim = self.createPieceFadeAnimation(piece)
-        fadeAnim.finished.connect(lambda : piece.widget.setParent(None))
+        fadeAnim.finished.connect(lambda: piece.widget.setParent(None))
         self.addAnimation(fadeAnim)
         del self.positions[pos]
 
@@ -205,12 +208,25 @@ class ChessBoard(QLabel):
         self.firstClickSquare = None
 
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
+        if self.firstClickSquare is None:
+            return
+
         rank, file = rankAndFileFromCoords(ev.x(), ev.y())
-        self.drawBoard(self)
-        return super().mousePressEvent(ev)
+
+        if not self.moveHandler.move(self.firstClickSquare, chess.square(file, rank)):
+            self.firstClickSquare = None
+            self.drawBoard(self)
 
     def clickPiece(self, piece: Piece):
-        self.firstClickSquare = chess.square(piece.file, piece.rank)
+        square = chess.square(piece.file, piece.rank)
+        turn = self.moveHandler.whoseTurn()
+        if piece.color != turn and self.firstClickSquare is not None:
+            if self.moveHandler.move(self.firstClickSquare, square):
+                # It was a valid move so leave the handler to update the board.
+                return
+
+        if piece.color == turn:
+            self.firstClickSquare = square
         self.drawBoard(self)
 
     DARK_SQUARE = QColorConstants.Svg.darkslategray
@@ -286,6 +302,10 @@ class ChessBoard(QLabel):
                 self.anim.setCurrentTime(self.anim.duration())
             self.anim = None
 
+    def clearAnimation(self):
+        self.anim = None
+
     def startAnimation(self):
         if self.anim is not None:
             self.anim.start()
+            self.anim.finished.connect(self.clearAnimation)

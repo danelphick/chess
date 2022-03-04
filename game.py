@@ -131,3 +131,9 @@ class Game:
         else:
             parent = self.game.parent
             return (parent.turn(), parent.board().fullmove_number)
+
+    def replaceNextMove(self, move):
+        if not self.game.is_end():
+            self.game.remove_variation(0)
+        self.game.add_main_variation(move)
+        # print(self.game)
