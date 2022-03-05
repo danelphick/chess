@@ -41,7 +41,6 @@ class Controller:
     def makeMove(self):
         """Carry out the next move in the game."""
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
-        print(f"makeMove : {chess.square_name(fromPos)} -> {chess.square_name(toPos)}")
         captureSquare = self.game.getCapturedSquare()
 
         if captureSquare is not None:
@@ -112,9 +111,14 @@ class Controller:
     def move(self, fromPos: chess.Square, toPos: chess.Square):
         move = chess.Move(fromPos, toPos)
         if self.game.board.is_legal(move):
+            old = self.currentTurnAndNumber
             self.game.replaceNextMove(move)
-            print(self.game.game.game())
+            move_text = self.game.game.next().san()
             self.makeMove()
+            self.currentTurnAndNumber = self.game.getTurnAndNumber()
+            self.move_list.removeMoves(self.currentTurnAndNumber)
+            self.move_list.addMove(self.currentTurnAndNumber, move_text)
+            self.move_list.setCurrentMove(self.currentTurnAndNumber, old)
             return True
         else:
             return False

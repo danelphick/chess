@@ -20,7 +20,6 @@ class MoveList(QtWidgets.QScrollArea):
 
     def __init__(self):
         super().__init__()
-        self.moveCount = 0
         self.setMoves([])
 
     def removeMove(self, row, color):
@@ -72,8 +71,6 @@ class MoveList(QtWidgets.QScrollArea):
         except StopIteration:
             pass
 
-        self.moveCount = row
-
         self.move_grid.setRowStretch(row + 1, 1)
         self.move_grid.setColumnStretch(3, 1)
 
@@ -91,3 +88,32 @@ class MoveList(QtWidgets.QScrollArea):
             self.styleMove(old, MoveList.MOVE_STYLE)
 
         self.styleMove(new, MoveList.CURRENT_MOVE_STYLE, ensureVisible=True)
+
+    def addMove(self, turnAndNumber, move):
+        turn, number = turnAndNumber
+        row = number - 1
+        move_label = QLabel(move)
+        move_label.setStyleSheet(MoveList.MOVE_STYLE)
+        if turn == chess.WHITE:
+            number_label = QLabel(str(number))
+            self.move_grid.addWidget(number_label, row, 0)
+            number_label.setStyleSheet(MoveList.MOVE_STYLE)
+            self.move_grid.addWidget(move_label, row, 1)
+        else:
+            self.move_grid.addWidget(move_label, row, 2)
+
+    def removeMoves(self, turnAndNumber):
+        turn, number = turnAndNumber
+        row = number - 1
+        if turn == chess.BLACK:
+            # delete the black move and increment the number before starting the loop
+            if item := self.move_grid.itemAtPosition(row, 2) is not None:
+                if widget := item.widget() is not None:
+                    widget.setParent(None)
+            row = row + 1
+
+        for t in range(row, self.move_grid.rowCount()):
+            for i in range(0, 3):
+                item = self.move_grid.itemAtPosition(t, i)
+                if item is not None:
+                    item.widget().setParent(None)
