@@ -161,7 +161,6 @@ class ChessBoard(QLabel):
         self.positions[toPos].changeType(type)
 
     def createPieceFadeAnimation(self, piece: Piece, reverse: bool = False):
-        piece.widget.clickHandler = None
         effect = QtWidgets.QGraphicsOpacityEffect(self)
         piece.widget.setGraphicsEffect(effect)
         piece.widget.lower()
@@ -171,6 +170,7 @@ class ChessBoard(QLabel):
             fadeAnim.setEndValue(1)
             fadeAnim.setEasingCurve(QEasingCurve.OutQuad)
         else:
+            piece.widget.clickHandler = None
             fadeAnim.setStartValue(1)
             fadeAnim.setEndValue(0)
             fadeAnim.setEasingCurve(QEasingCurve.InQuad)
