@@ -1,6 +1,8 @@
+from abc import ABC, abstractmethod
+
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
-from PySide6.QtGui import QColorConstants
+from PySide6.QtGui import QColor, QColorConstants
 from PySide6.QtWidgets import QLabel, QWidget
 
 import chess
@@ -16,6 +18,10 @@ HEIGHT = SQUARE_SIZE * 8 + TOP_MARGIN + TOP_MARGIN
 ANIMATION_DURATION = 200
 
 
+def rankAndFileFromCoords(x: int, y: int):
+    return (7 - (y - TOP_MARGIN) // SQUARE_SIZE, (x - LEFT_MARGIN) // SQUARE_SIZE)
+
+
 def squarePositionFromRankAndFile(rank: int, file: int):
     return QtCore.QPoint(
         SQUARE_SIZE * file + LEFT_MARGIN,
@@ -27,6 +33,17 @@ def squarePosition(square: int):
     rank = chess.square_rank(square)
     file = chess.square_file(square)
     return squarePositionFromRankAndFile(rank, file)
+
+
+class PieceWidget(QLabel):
+    def __init__(self, parent: QWidget, clickHandler):
+        super().__init__(parent)
+        assert clickHandler is not None
+        self.clickHandler = clickHandler
+
+    def mousePressEvent(self, event):
+        if self.isVisible():
+            self.clickHandler()
 
 
 class Piece:
@@ -64,11 +81,12 @@ class Piece:
         color: bool,
         rank: int,
         file: int,
+        clickHandler,
     ):
         self.color = color
         self.rank = rank
         self.file = file
-        self.widget = QLabel(parent)
+        self.widget = PieceWidget(parent, lambda: clickHandler(self))
         self.widget.resize(SQUARE_SIZE, SQUARE_SIZE)
         self.widget.move(squarePositionFromRankAndFile(rank, file))
         self.changeType(type)
@@ -81,12 +99,17 @@ class Piece:
 class ChessBoard(QLabel):
     anim: QtCore.QAbstractAnimation
     positions: dict[int, Piece]
+    firstClickSquare: int | None
 
     def __init__(self):
         super().__init__()
 
         self.anim = None
         self.positions = {}
+        self.firstClickSquare = None
+        self.moveHandler = None
+        self.lastMove = None
+        self.checkSquare = None
 
         canvas = QtGui.QPixmap(WIDTH, HEIGHT)
         canvas.fill(Qt.gray)
@@ -126,6 +149,7 @@ class ChessBoard(QLabel):
         if reverse:
             fromPos, toPos = toPos, fromPos
         piece = self.positions[fromPos]
+        piece.file, piece.rank = chess.square_file(toPos), chess.square_rank(toPos)
         self.positions[toPos] = self.positions.pop(fromPos)
         anim = QPropertyAnimation(piece.widget, b"pos")
         anim.setEndValue(squarePosition(toPos))
@@ -148,15 +172,19 @@ class ChessBoard(QLabel):
             fadeAnim.setEndValue(1)
             fadeAnim.setEasingCurve(QEasingCurve.OutQuad)
         else:
+            piece.widget.clickHandler = None
             fadeAnim.setStartValue(1)
             fadeAnim.setEndValue(0)
             fadeAnim.setEasingCurve(QEasingCurve.InQuad)
+            fadeAnim.finished.connect(lambda: piece.widget.setParent(None))
         fadeAnim.setDuration(ANIMATION_DURATION)
         return fadeAnim
 
     def capturePiece(self, pos: int):
         piece = self.positions[pos]
-        self.addAnimation(self.createPieceFadeAnimation(piece))
+        fadeAnim = self.createPieceFadeAnimation(piece)
+        fadeAnim.finished.connect(lambda: piece.widget.setParent(None))
+        self.addAnimation(fadeAnim)
         del self.positions[pos]
 
     def addPiece(self, pos: int, chess_piece: chess.Piece, fadeIn=False):
@@ -166,6 +194,7 @@ class ChessBoard(QLabel):
             chess_piece.color,
             chess.square_rank(pos),
             chess.square_file(pos),
+            self.clickPiece,
         )
         self.positions[pos] = piece
         piece.widget.lower()
@@ -173,7 +202,47 @@ class ChessBoard(QLabel):
         if fadeIn:
             self.addAnimation(self.createPieceFadeAnimation(piece, reverse=True))
 
-    def drawBoard(self, checkSquare=None, move=None):
+    def clearClicks(self):
+        """
+        Clear any outstanding clicks (e.g. incomplete moves), but don't redraw
+        the board.
+        """
+        self.firstClickSquare = None
+
+    def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
+        if self.firstClickSquare is None:
+            return
+
+        rank, file = rankAndFileFromCoords(ev.x(), ev.y())
+
+        if not self.moveHandler.move(self.firstClickSquare, chess.square(file, rank)):
+            self.firstClickSquare = None
+            self.drawBoard()
+
+    def clickPiece(self, piece: Piece):
+        square = chess.square(piece.file, piece.rank)
+        turn = self.moveHandler.whoseTurn()
+        if piece.color != turn and self.firstClickSquare is not None:
+            if self.moveHandler.move(self.firstClickSquare, square):
+                # It was a valid move so leave the handler to update the board.
+                return
+
+        if piece.color == turn:
+            self.firstClickSquare = square
+        self.drawBoard()
+
+    DARK_SQUARE = QColorConstants.Svg.darkslategray
+    LIGHT_SQUARE = QColorConstants.Svg.antiquewhite
+    SELECTED_DARK_SQUARE = QColorConstants.Svg.darkslategray.darker(140)
+    SELECTED_LIGHT_SQUARE = QColorConstants.Svg.antiquewhite.darker(140)
+    CHECK_DARK_SQUARE = QColorConstants.Svg.darkolivegreen
+    CHECK_LIGHT_SQUARE = QColorConstants.Svg.lightgreen
+
+    def setLastMove(self, move, checkSquare=None):
+        self.lastMove = move
+        self.checkSquare = checkSquare
+
+    def drawBoard(self):
         canvas = self.pixmap()
         painter = QtGui.QPainter(canvas)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -181,17 +250,25 @@ class ChessBoard(QLabel):
             for x in range(0, 8):
                 # This draws the board upside down hence 7-y
                 square = chess.square(x, 7 - y)
-                if move is not None and (square == move[0] or square == move[1]):
+                if self.lastMove is not None and (
+                    square == self.lastMove[0] or square == self.lastMove[1]
+                ):
                     color = (
-                        QColorConstants.Svg.darkolivegreen
+                        ChessBoard.CHECK_DARK_SQUARE
                         if (x + y) % 2 == 1
-                        else QColorConstants.Svg.lightgreen
+                        else ChessBoard.CHECK_LIGHT_SQUARE
+                    )
+                elif square == self.firstClickSquare:
+                    color = (
+                        ChessBoard.SELECTED_DARK_SQUARE
+                        if (x + y) % 2 == 1
+                        else ChessBoard.SELECTED_LIGHT_SQUARE
                     )
                 else:
                     color = (
-                        QColorConstants.Svg.darkslategray
+                        ChessBoard.DARK_SQUARE
                         if (x + y) % 2 == 1
-                        else QColorConstants.Svg.antiquewhite
+                        else ChessBoard.LIGHT_SQUARE
                     )
                 painter.fillRect(
                     x * SQUARE_SIZE + LEFT_MARGIN,
@@ -201,7 +278,7 @@ class ChessBoard(QLabel):
                     color,
                 )
 
-                if square == checkSquare:
+                if square == self.checkSquare:
                     # Create a red halo emanating from behind the king fading to the
                     # square color actual.
                     HALF_SQUARE_SIZE = SQUARE_SIZE / 2
@@ -233,6 +310,10 @@ class ChessBoard(QLabel):
                 self.anim.setCurrentTime(self.anim.duration())
             self.anim = None
 
+    def clearAnimation(self):
+        self.anim = None
+
     def startAnimation(self):
         if self.anim is not None:
             self.anim.start()
+            self.anim.finished.connect(self.clearAnimation)

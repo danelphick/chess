@@ -31,18 +31,15 @@ class Controller:
         self.move_list.setMoves(game.getMoves())
         self.updateMoveListPosition()
         self.chess_board.setupBoard(game.board)
+        self.chess_board.moveHandler = self
 
     def updateMoveListPosition(self):
         new = self.game.getTurnAndNumber()
         self.move_list.setCurrentMove(new, self.currentTurnAndNumber)
         self.currentTurnAndNumber = new
 
-    def nextMove(self):
-        self.chess_board.cancelAnimation()
-
-        if not self.game.hasMoreMoves():
-            return
-
+    def makeMove(self):
+        """Carry out the next move in the game."""
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
         captureSquare = self.game.getCapturedSquare()
 
@@ -60,23 +57,36 @@ class Controller:
 
         self.game.advance()
 
-        self.chess_board.drawBoard(
-            checkSquare=self.game.getKingCheckSquare(), move=(fromPos, toPos)
+        self.chess_board.setLastMove(
+            (fromPos, toPos), checkSquare=self.game.getKingCheckSquare()
         )
+        self.chess_board.drawBoard()
+
+    def nextMove(self):
+        self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
+
+        if not self.game.hasMoreMoves():
+            return
+
+        self.game.game
+        self.makeMove()
 
         self.updateMoveListPosition()
 
     def previousMove(self):
         self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
+
         if not self.game.goBack():
             return
 
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
 
-        self.chess_board.drawBoard(
-            checkSquare=self.game.getKingCheckSquare(),
-            move=self.game.getPreviousMove(),
+        self.chess_board.setLastMove(
+            self.game.getPreviousMove(), checkSquare=self.game.getKingCheckSquare()
         )
+        self.chess_board.drawBoard()
 
         if self.game.getPromotionPiece() is not None:
             self.chess_board.changePiece(toPos, chess.PAWN)
@@ -98,3 +108,21 @@ class Controller:
         self.chess_board.startAnimation()
 
         self.updateMoveListPosition()
+
+    def move(self, fromPos: chess.Square, toPos: chess.Square):
+        move = chess.Move(fromPos, toPos)
+        if self.game.board.is_legal(move):
+            old = self.currentTurnAndNumber
+            self.game.replaceNextMove(move)
+            move_text = self.game.game.next().san()
+            self.makeMove()
+            self.currentTurnAndNumber = self.game.getTurnAndNumber()
+            self.move_list.removeMoves(self.currentTurnAndNumber)
+            self.move_list.addMove(self.currentTurnAndNumber, move_text)
+            self.move_list.setCurrentMove(self.currentTurnAndNumber, old)
+            return True
+        else:
+            return False
+
+    def whoseTurn(self) -> chess.Color:
+        return self.game.board.turn
