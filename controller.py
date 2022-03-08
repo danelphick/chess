@@ -57,9 +57,10 @@ class Controller:
 
         self.game.advance()
 
-        self.chess_board.drawBoard(
-            checkSquare=self.game.getKingCheckSquare(), move=(fromPos, toPos)
+        self.chess_board.setLastMove(
+            (fromPos, toPos), checkSquare=self.game.getKingCheckSquare()
         )
+        self.chess_board.drawBoard()
 
     def nextMove(self):
         self.chess_board.cancelAnimation()
@@ -82,10 +83,10 @@ class Controller:
 
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
 
-        self.chess_board.drawBoard(
-            checkSquare=self.game.getKingCheckSquare(),
-            move=self.game.getPreviousMove(),
+        self.chess_board.setLastMove(
+            self.game.getPreviousMove(), checkSquare=self.game.getKingCheckSquare()
         )
+        self.chess_board.drawBoard()
 
         if self.game.getPromotionPiece() is not None:
             self.chess_board.changePiece(toPos, chess.PAWN)

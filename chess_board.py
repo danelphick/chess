@@ -108,6 +108,8 @@ class ChessBoard(QLabel):
         self.positions = {}
         self.firstClickSquare = None
         self.moveHandler = None
+        self.lastMove = None
+        self.checkSquare = None
 
         canvas = QtGui.QPixmap(WIDTH, HEIGHT)
         canvas.fill(Qt.gray)
@@ -215,7 +217,7 @@ class ChessBoard(QLabel):
 
         if not self.moveHandler.move(self.firstClickSquare, chess.square(file, rank)):
             self.firstClickSquare = None
-            self.drawBoard(self)
+            self.drawBoard()
 
     def clickPiece(self, piece: Piece):
         square = chess.square(piece.file, piece.rank)
@@ -227,7 +229,7 @@ class ChessBoard(QLabel):
 
         if piece.color == turn:
             self.firstClickSquare = square
-        self.drawBoard(self)
+        self.drawBoard()
 
     DARK_SQUARE = QColorConstants.Svg.darkslategray
     LIGHT_SQUARE = QColorConstants.Svg.antiquewhite
@@ -236,7 +238,11 @@ class ChessBoard(QLabel):
     CHECK_DARK_SQUARE = QColorConstants.Svg.darkolivegreen
     CHECK_LIGHT_SQUARE = QColorConstants.Svg.lightgreen
 
-    def drawBoard(self, checkSquare=None, move=None):
+    def setLastMove(self, move, checkSquare=None):
+        self.lastMove = move
+        self.checkSquare = checkSquare
+
+    def drawBoard(self):
         canvas = self.pixmap()
         painter = QtGui.QPainter(canvas)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -244,7 +250,9 @@ class ChessBoard(QLabel):
             for x in range(0, 8):
                 # This draws the board upside down hence 7-y
                 square = chess.square(x, 7 - y)
-                if move is not None and (square == move[0] or square == move[1]):
+                if self.lastMove is not None and (
+                    square == self.lastMove[0] or square == self.lastMove[1]
+                ):
                     color = (
                         ChessBoard.CHECK_DARK_SQUARE
                         if (x + y) % 2 == 1
@@ -270,7 +278,7 @@ class ChessBoard(QLabel):
                     color,
                 )
 
-                if square == checkSquare:
+                if square == self.checkSquare:
                     # Create a red halo emanating from behind the king fading to the
                     # square color actual.
                     HALF_SQUARE_SIZE = SQUARE_SIZE / 2
