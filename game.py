@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import io
+from typing import Optional
 
 import chess
 import chess.pgn
+from chess import Square
 
 
 class Game:
@@ -15,22 +19,22 @@ class Game:
         self.game = self.pgn.game()
         self.ply = 0
 
-    def fromPgnText(pgn_text):
+    def fromPgnText(pgn_text) -> Game:
         if isinstance(pgn_text, str):
             pgn_text = io.StringIO(pgn_text)
         pgn = chess.pgn.read_game(pgn_text)
         return Game(chess.Board(), pgn)
 
-    def hasMoreMoves(self):
+    def hasMoreMoves(self) -> bool:
         return not self.game.is_end()
 
-    def getFromSquare(self):
+    def getFromSquare(self) -> Square:
         return self.game.next().move.from_square
 
-    def getToSquare(self):
+    def getToSquare(self) -> Square:
         return self.game.next().move.to_square
 
-    def advance(self, plies=1):
+    def advance(self, plies: int = 1) -> None:
         """
         Advance the position.
 
@@ -50,7 +54,7 @@ class Game:
             self.ply = self.ply + 1
         return plies == 0
 
-    def goBack(self):
+    def goBack(self) -> bool:
         """
         Go back a single move.
 
@@ -66,7 +70,7 @@ class Game:
         self.board = self.game.board()
         return True
 
-    def getCapturedSquare(self):
+    def getCapturedSquare(self) -> Optional[Square]:
         """
         Gets position of captured piece or None if not a capturing move. (Handles en
         passant)
@@ -84,13 +88,13 @@ class Game:
         else:
             return None
 
-    def getPromotionPiece(self):
+    def getPromotionPiece(self) -> Optional[chess.PieceType]:
         """
         Gets promotion piece type or None if not a promotion move.
         """
         return self.game.next().move.promotion
 
-    def getCastlingRookMove(self):
+    def getCastlingRookMove(self) -> Optional[tuple[Square, Square]]:
         """
         If the current move is a castling move then gets the movement of the rook or
         None otherwise.
@@ -104,12 +108,12 @@ class Game:
         else:
             return None
 
-    def getKingCheckSquare(self):
+    def getKingCheckSquare(self) -> Optional[Square]:
         """
         Gets the position of king that is currently in check.
 
         Returns:
-            Optional(chess.Square): If it is check, then this is the king's square.
+            Optional(Square): If it is check, then this is the king's square.
             If it's not check then None.
         """
         if self.board.is_check():
@@ -117,23 +121,22 @@ class Game:
         else:
             return None
 
-    def getPreviousMove(self):
-        if self.game.move is not None:
-            return (self.game.move.from_square, self.game.move.to_square)
-        pass
+    def getPreviousMove(self) -> Optional[tuple[Square, Square]]:
+        if self.game.move is None:
+            return None
+        return (self.game.move.from_square, self.game.move.to_square)
 
-    def getMoves(self):
+    def getMoves(self) -> chess.pgn.Mainline[chess.pgn.ChildNode]:
         return self.game.mainline()
 
-    def getTurnAndNumber(self):
+    def getTurnAndNumber(self) -> Optional[tuple[chess.Color, int]]:
         if self.game.parent is None:
             return None
         else:
             parent = self.game.parent
             return (parent.turn(), parent.board().fullmove_number)
 
-    def replaceNextMove(self, move):
+    def replaceNextMove(self, move) -> None:
         if not self.game.is_end():
             self.game.remove_variation(0)
         self.game.add_main_variation(move)
-        # print(self.game)
