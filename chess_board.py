@@ -181,6 +181,11 @@ class ChessBoard(QLabel):
 
             self.firstClickSquare = square
             self.drawBoard()
+
+            piece.widget.opacity = 0.5
+            effect = QtWidgets.QGraphicsOpacityEffect(self)
+            effect.setOpacity(0.5)
+            piece.widget.setGraphicsEffect(effect)
         else:
             if self.firstClickSquare is not None:
                 self.moveHandler.move(self.firstClickSquare, square)
@@ -198,6 +203,8 @@ class ChessBoard(QLabel):
         if self.dragPiece is None:
             return
 
+        piece_widget = self.positions[self.firstClickSquare].widget
+        piece_widget.setGraphicsEffect(None)
         pos = self.mapFromGlobal(pos)
         square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
         self.moveHandler.move(self.firstClickSquare, square, instant=True)
