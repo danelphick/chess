@@ -11,6 +11,8 @@ import chess.pgn
 
 SQUARE_SIZE = 80
 HALF_SQUARE_SIZE = SQUARE_SIZE // 2
+VALID_MOVE_CIRCLE_RADIUS = SQUARE_SIZE // 6
+VALID_CAPTURE_CIRCLE_RADIUS = SQUARE_SIZE * 0.6
 LEFT_MARGIN = 20
 RIGHT_MARGIN = 20
 TOP_MARGIN = 20
@@ -139,7 +141,6 @@ class Piece:
         color: chess.Color,
         rank: int,
         file: int,
-        clickHandler,
     ):
         self.color = color
         self.rank = rank
@@ -159,6 +160,10 @@ class ChessBoard(QLabel):
     positions: dict[int, Piece]
     firstClickSquare: Optional[int]
     dragPiece: Optional[Piece]
+    validSquares: list[chess.Square]
+
+    def setPieceToMove(self, square):
+        pass
 
     # Methods overridden from DragHandler
     def dragStart(self, pos: QtCore.QPoint) -> None:
@@ -166,13 +171,13 @@ class ChessBoard(QLabel):
         square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
         piece = self.positions[square]
         if self.moveHandler.whoseTurn() == piece.color:
+            self.validSquares = self.moveHandler.getValidMoveSquares(square)
             self.dragPiece = Piece(
                 self,
                 piece.type,
                 piece.color,
                 chess.square_rank(square),
                 chess.square_file(square),
-                self.clickPiece,
             )
             self.dragPiece.widget.move(
                 pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
@@ -221,6 +226,7 @@ class ChessBoard(QLabel):
         self.moveHandler = None
         self.lastMove = None
         self.checkSquare = None
+        self.validSquares = []
 
         canvas = QtGui.QPixmap(WIDTH, HEIGHT)
         canvas.fill(Qt.gray)
@@ -306,7 +312,6 @@ class ChessBoard(QLabel):
             chess_piece.color,
             chess.square_rank(pos),
             chess.square_file(pos),
-            self.clickPiece,
         )
         self.positions[pos] = piece
         piece.widget.lower()
@@ -320,6 +325,7 @@ class ChessBoard(QLabel):
         the board.
         """
         self.firstClickSquare = None
+        self.validSquares = []
 
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
         if self.firstClickSquare is None:
@@ -328,20 +334,8 @@ class ChessBoard(QLabel):
         rank, file = rankAndFileFromCoords(ev.x(), ev.y())
 
         if not self.moveHandler.move(self.firstClickSquare, chess.square(file, rank)):
-            self.firstClickSquare = None
+            self.clearClicks()
             self.drawBoard()
-
-    def clickPiece(self, piece: Piece):
-        square = chess.square(piece.file, piece.rank)
-        turn = self.moveHandler.whoseTurn()
-        if piece.color != turn and self.firstClickSquare is not None:
-            if self.moveHandler.move(self.firstClickSquare, square):
-                # It was a valid move so leave the handler to update the board.
-                return
-
-        if piece.color == turn:
-            self.firstClickSquare = square
-        self.drawBoard()
 
     DARK_SQUARE = QColorConstants.Svg.darkslategray
     LIGHT_SQUARE = QColorConstants.Svg.antiquewhite
@@ -393,7 +387,6 @@ class ChessBoard(QLabel):
                 if square == self.checkSquare:
                     # Create a red halo emanating from behind the king fading to the
                     # square color actual.
-                    HALF_SQUARE_SIZE = SQUARE_SIZE / 2
                     gradient = QtGui.QRadialGradient(
                         QtCore.QPointF(
                             x * SQUARE_SIZE + LEFT_MARGIN + HALF_SQUARE_SIZE,
@@ -411,6 +404,38 @@ class ChessBoard(QLabel):
                             SQUARE_SIZE,
                         ),
                         gradient,
+                    )
+
+                # The lookup loops over the list which could be avoided if we
+                # drew the squares in the right order and maintained our
+                # position in this list.
+                if square in self.validSquares:
+                    radius = VALID_MOVE_CIRCLE_RADIUS
+                    if square in self.positions:
+                        radius = VALID_CAPTURE_CIRCLE_RADIUS
+                    color = (
+                        ChessBoard.DARK_SQUARE
+                        if (x + y) % 2 == 1
+                        else ChessBoard.LIGHT_SQUARE
+                    )
+
+                    validHighlight = QColorConstants.DarkYellow
+                    validHighlight.setAlphaF(0.7)
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(validHighlight)
+                    painter.setClipRect(
+                        x * SQUARE_SIZE + LEFT_MARGIN,
+                        y * SQUARE_SIZE + TOP_MARGIN,
+                        SQUARE_SIZE,
+                        SQUARE_SIZE
+                    )
+                    painter.drawEllipse(
+                        QtCore.QPointF(
+                            x * SQUARE_SIZE + LEFT_MARGIN + HALF_SQUARE_SIZE,
+                            y * SQUARE_SIZE + TOP_MARGIN + HALF_SQUARE_SIZE,
+                        ),
+                        radius,
+                        radius,
                     )
 
         painter.end()

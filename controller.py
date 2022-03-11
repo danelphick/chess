@@ -66,6 +66,7 @@ class Controller:
         self.chess_board.setLastMove(
             (fromPos, toPos), checkSquare=self.game.getKingCheckSquare()
         )
+        self.chess_board.clearClicks()
         self.chess_board.drawBoard()
         if instant:
             self.chess_board.cancelAnimation()
@@ -147,6 +148,9 @@ class Controller:
             return True
         else:
             return False
+
+    def getValidMoveSquares(self, fromPos: chess.Square):
+        return self.game.getValidMoves(fromPos)
 
     def whoseTurn(self) -> chess.Color:
         return self.game.board.turn
