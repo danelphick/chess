@@ -76,14 +76,13 @@ def squarePosition(square: int):
 class PieceWidget(QLabel):
     def __init__(self, chess_board: QWidget):
         super().__init__(chess_board)
-        self.dragStartPosition = None
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if not self.isVisible():
             return
 
-        if event.button() == Qt.LeftButton:
-            self.dragStartPosition = event.pos()
+        if event.button() != Qt.LeftButton:
+            return
 
         self.parentWidget().dragStart(event.globalPosition().toPoint())
 
@@ -94,7 +93,8 @@ class PieceWidget(QLabel):
         self.parentWidget().dragMove(event.globalPosition().toPoint())
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        self.parentWidget().dragEnd(event.globalPosition().toPoint())
+        if event.button() == Qt.LeftButton:
+            self.parentWidget().dragEnd(event.globalPosition().toPoint())
 
 
 class Piece:
