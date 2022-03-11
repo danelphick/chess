@@ -150,3 +150,10 @@ class Game:
         if not self.game.is_end():
             self.game.remove_variation(0)
         self.game.add_main_variation(move)
+
+    def getValidMoves(self, square) -> list[Square]:
+        return [
+            move.to_square
+            for move in self.board.legal_moves
+            if move.from_square == square
+        ]

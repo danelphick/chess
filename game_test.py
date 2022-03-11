@@ -157,3 +157,39 @@ def testGetPreviousMove():
     game.goBack()
     AssertThat(game.getPreviousMove()).IsEqualTo((chess.E2, chess.E4))
 
+
+def testGoToStart():
+    game = Game.fromPgnText(SCHOLARS_MATE_PGN)
+    AssertThat(game.getPreviousMove()).IsNone()
+    game.advance()
+    game.advance()
+    game.advance()
+    game.goToStart()
+    AssertThat(game.getFromSquare()).IsEqualTo(chess.E2)
+    AssertThat(game.getToSquare()).IsEqualTo(chess.E4)
+
+
+def testGoToEnd():
+    game = Game.fromPgnText(SCHOLARS_MATE_PGN)
+    game.goToEnd()
+    AssertThat(game.getPreviousMove()).IsEqualTo((chess.H5, chess.F7))
+
+
+def testGetValidMoves():
+    game = Game.fromPgnText(SCHOLARS_MATE_PGN)
+    # Pawn has two valid moves at the start
+    AssertThat(game.getValidMoves(chess.E2)).ContainsExactly(chess.E3, chess.E4)
+    # As does the knight
+    AssertThat(game.getValidMoves(chess.G1)).ContainsExactly(chess.F3, chess.H3)
+    # But bishop can't move
+    AssertThat(game.getValidMoves(chess.F1)).IsEmpty()
+    # And neither can black pawns
+    AssertThat(game.getValidMoves(chess.E7)).IsEmpty()
+
+    game.advance()
+    # White pieces can't move now
+    AssertThat(game.getValidMoves(chess.E4)).IsEmpty()
+    AssertThat(game.getValidMoves(chess.G1)).IsEmpty()
+    AssertThat(game.getValidMoves(chess.F1)).IsEmpty()
+    # But black can
+    AssertThat(game.getValidMoves(chess.E7)).ContainsExactly(chess.E6, chess.E5)
