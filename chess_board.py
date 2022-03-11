@@ -182,7 +182,8 @@ class ChessBoard(QLabel):
             self.firstClickSquare = square
             self.drawBoard()
         else:
-            self.moveHandler.move(self.firstClickSquare, square)
+            if self.firstClickSquare is not None:
+                self.moveHandler.move(self.firstClickSquare, square)
 
     def dragMove(self, pos: QtCore.QPoint) -> None:
         if self.dragPiece is None:

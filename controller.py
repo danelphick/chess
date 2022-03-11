@@ -112,6 +112,7 @@ class Controller:
         self.updateMoveListPosition()
 
     def move(self, fromPos: chess.Square, toPos: chess.Square, instant=False):
+        assert fromPos is not None
         move = chess.Move(fromPos, toPos)
         if self.game.board.is_legal(move):
             old = self.currentTurnAndNumber
