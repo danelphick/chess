@@ -38,7 +38,7 @@ class Controller:
         self.move_list.setCurrentMove(new, self.currentTurnAndNumber)
         self.currentTurnAndNumber = new
 
-    def makeMove(self):
+    def makeMove(self, instant=False):
         """Carry out the next move in the game."""
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
         captureSquare = self.game.getCapturedSquare()
@@ -61,6 +61,8 @@ class Controller:
             (fromPos, toPos), checkSquare=self.game.getKingCheckSquare()
         )
         self.chess_board.drawBoard()
+        if instant:
+            self.chess_board.cancelAnimation()
 
     def nextMove(self):
         self.chess_board.cancelAnimation()
@@ -109,13 +111,13 @@ class Controller:
 
         self.updateMoveListPosition()
 
-    def move(self, fromPos: chess.Square, toPos: chess.Square):
+    def move(self, fromPos: chess.Square, toPos: chess.Square, instant=False):
         move = chess.Move(fromPos, toPos)
         if self.game.board.is_legal(move):
             old = self.currentTurnAndNumber
             self.game.replaceNextMove(move)
             move_text = self.game.game.next().san()
-            self.makeMove()
+            self.makeMove(instant=instant)
             self.currentTurnAndNumber = self.game.getTurnAndNumber()
             self.move_list.removeMoves(self.currentTurnAndNumber)
             self.move_list.addMove(self.currentTurnAndNumber, move_text)

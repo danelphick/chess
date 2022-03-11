@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
-from PySide6.QtGui import QColor, QColorConstants
+from PySide6.QtGui import QColorConstants
 from PySide6.QtWidgets import QLabel, QWidget
 
 import chess
 import chess.pgn
 
 SQUARE_SIZE = 80
+HALF_SQUARE_SIZE = SQUARE_SIZE // 2
 LEFT_MARGIN = 20
 RIGHT_MARGIN = 20
 TOP_MARGIN = 20
@@ -18,8 +20,44 @@ HEIGHT = SQUARE_SIZE * 8 + TOP_MARGIN + TOP_MARGIN
 ANIMATION_DURATION = 200
 
 
+class DragHandler(ABC):
+    """Abstract piece drag handler."""
+
+    @abstractmethod
+    def dragStart(self, widget, pos: QtCore.QPoint) -> None:
+        """Called when a drag on a piece starts.
+
+        Args:
+            pos (QtCore.QPoint): Position of the mouse when the drag started.
+        """
+        return NotImplemented
+
+    @abstractmethod
+    def dragMove(self, widget, pos: QtCore.QPoint) -> None:
+        """Called during a drag on a piece, when the mouse moves.
+
+        Args:
+            pos (QtCore.QPoint): Position of the mouse during the update.
+        """
+        return NotImplemented
+
+    @abstractmethod
+    def dragEnd(self, pos: QtCore.QPoint) -> None:
+        """Called when a drag on a piece end.
+
+        Args:
+            pos (QtCore.QPoint): Position of the mouse at the end of the mouse.
+        """
+        return NotImplemented
+
+
 def rankAndFileFromCoords(x: int, y: int):
     return (7 - (y - TOP_MARGIN) // SQUARE_SIZE, (x - LEFT_MARGIN) // SQUARE_SIZE)
+
+
+def fileAndRankFromCoords(x: int, y: int):
+    temp = rankAndFileFromCoords(x, y)
+    return temp[1], temp[0]
 
 
 def squarePositionFromRankAndFile(rank: int, file: int):
@@ -36,17 +74,37 @@ def squarePosition(square: int):
 
 
 class PieceWidget(QLabel):
-    def __init__(self, parent: QWidget, clickHandler):
-        super().__init__(parent)
-        assert clickHandler is not None
-        self.clickHandler = clickHandler
+    def __init__(self, chess_board: QWidget):
+        super().__init__(chess_board)
+        self.dragStartPosition = None
 
-    def mousePressEvent(self, event):
-        if self.isVisible():
-            self.clickHandler()
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if not self.isVisible():
+            return
+
+        if event.button() == Qt.LeftButton:
+            self.dragStartPosition = event.pos()
+
+        self.parentWidget().dragStart(event.globalPosition().toPoint())
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        if not (event.buttons() & Qt.LeftButton):
+            return
+
+        self.parentWidget().dragMove(event.globalPosition().toPoint())
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        self.parentWidget().dragEnd(event.globalPosition().toPoint())
 
 
 class Piece:
+    chess_board: QWidget
+    color: chess.Color
+    type: chess.PieceType
+    rank: int
+    file: int
+    widget: PieceWidget
+
     def createPixmap(piece_name: str):
         return QtGui.QIcon("pieces/" + piece_name + ".svg").pixmap(
             SQUARE_SIZE, SQUARE_SIZE
@@ -76,9 +134,9 @@ class Piece:
 
     def __init__(
         self,
-        parent: QWidget,
-        type: int,
-        color: bool,
+        chess_board: QWidget,
+        type: chess.PieceType,
+        color: chess.Color,
         rank: int,
         file: int,
         clickHandler,
@@ -86,7 +144,7 @@ class Piece:
         self.color = color
         self.rank = rank
         self.file = file
-        self.widget = PieceWidget(parent, lambda: clickHandler(self))
+        self.widget = PieceWidget(chess_board)
         self.widget.resize(SQUARE_SIZE, SQUARE_SIZE)
         self.widget.move(squarePositionFromRankAndFile(rank, file))
         self.changeType(type)
@@ -99,7 +157,52 @@ class Piece:
 class ChessBoard(QLabel):
     anim: QtCore.QAbstractAnimation
     positions: dict[int, Piece]
-    firstClickSquare: int | None
+    firstClickSquare: Optional[int]
+    dragPiece: Optional[Piece]
+
+    # Methods overridden from DragHandler
+    def dragStart(self, pos: QtCore.QPoint) -> None:
+        pos = self.mapFromGlobal(pos)
+        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
+        piece = self.positions[square]
+        if self.moveHandler.whoseTurn() == piece.color:
+            self.dragPiece = Piece(
+                self,
+                piece.type,
+                piece.color,
+                chess.square_rank(square),
+                chess.square_file(square),
+                self.clickPiece,
+            )
+            self.dragPiece.widget.move(
+                pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
+            )
+            self.dragPiece.widget.show()
+
+            self.firstClickSquare = square
+            self.drawBoard()
+        else:
+            self.moveHandler.move(self.firstClickSquare, square)
+
+    def dragMove(self, pos: QtCore.QPoint) -> None:
+        if self.dragPiece is None:
+            return
+
+        pos = self.mapFromGlobal(pos)
+        self.dragPiece.widget.move(
+            pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
+        )
+
+    def dragEnd(self, pos: QtCore.QPoint) -> None:
+        if self.dragPiece is None:
+            return
+
+        pos = self.mapFromGlobal(pos)
+        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
+        self.moveHandler.move(self.firstClickSquare, square, instant=True)
+
+        self.dragPiece.widget.setParent(None)
+        self.dragPiece = None
 
     def __init__(self):
         super().__init__()
@@ -115,6 +218,7 @@ class ChessBoard(QLabel):
         canvas.fill(Qt.gray)
         self.setPixmap(canvas)
         self.drawBoard()
+        self.dragWidget = None
 
     def setupBoard(self, board: chess.Board):
         for piece in self.positions.values():
@@ -187,7 +291,7 @@ class ChessBoard(QLabel):
         self.addAnimation(fadeAnim)
         del self.positions[pos]
 
-    def addPiece(self, pos: int, chess_piece: chess.Piece, fadeIn=False):
+    def addPiece(self, pos: int, chess_piece: chess.Piece, fadeIn=False) -> Piece:
         piece = Piece(
             self,
             chess_piece.piece_type,
@@ -238,7 +342,7 @@ class ChessBoard(QLabel):
     CHECK_DARK_SQUARE = QColorConstants.Svg.darkolivegreen
     CHECK_LIGHT_SQUARE = QColorConstants.Svg.lightgreen
 
-    def setLastMove(self, move, checkSquare=None):
+    def setLastMove(self, move: tuple[chess.Square, chess.Square], checkSquare=None):
         self.lastMove = move
         self.checkSquare = checkSquare
 
