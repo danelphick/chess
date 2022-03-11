@@ -1,4 +1,3 @@
-
 import io
 import pathlib
 import sys
@@ -49,8 +48,11 @@ class MainWindow(QMainWindow):
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         top_layout.addWidget(self.board_widget)
 
-        self.previous = QPushButton("Previous")
-        self.next = QPushButton("Next")
+        # self.style().standardIcon(QtWidgets.QStyle.SP_ArrowBack)
+        self.first = QPushButton("|<")
+        self.previous = QPushButton("<")
+        self.next = QPushButton(">")
+        self.last = QPushButton(">|")
 
         right_panel = QWidget()
         top_layout.addWidget(right_panel)
@@ -58,9 +60,12 @@ class MainWindow(QMainWindow):
         right_panel.setLayout(right_panel_layout)
         navigation_widget = QWidget()
         navigation_layout = QHBoxLayout()
+        navigation_layout.setSpacing(2)
         navigation_widget.setLayout(navigation_layout)
+        navigation_layout.addWidget(self.first)
         navigation_layout.addWidget(self.previous)
         navigation_layout.addWidget(self.next)
+        navigation_layout.addWidget(self.last)
 
         self.move_list = MoveList()
 
@@ -74,14 +79,6 @@ class MainWindow(QMainWindow):
             self.previous,
             self.previous.click,
         )
-
-    def clickNext(self):
-        self.board_widget.cancelAnimation()
-        self.board_widget.nextMove()
-
-    def clickPrevious(self):
-        self.board_widget.cancelAnimation()
-        self.board_widget.goBack()
 
     def setFromGame(self, board: chess.Board, pgn: chess.pgn.Game):
         self.board_widget.setup(board)
@@ -106,9 +103,7 @@ controller = None
 
 
 def openFile():
-    pgn_file, _ = QtWidgets.QFileDialog.getOpenFileName(
-        filter="*.pgn"
-    )
+    pgn_file, _ = QtWidgets.QFileDialog.getOpenFileName(filter="*.pgn")
     if pgn_file:
         pgn_text = pathlib.Path(pgn_file).read_text()
         setupGame(pgn_text)
@@ -119,7 +114,13 @@ def setupGame(pgn_text):
     pgn = chess.pgn.read_game(io.StringIO(pgn_text))
     game = Game(chess.Board(), pgn)
     controller = Controller(
-        game, window.board_widget, window.move_list, window.previous, window.next
+        game,
+        window.board_widget,
+        window.move_list,
+        window.first,
+        window.previous,
+        window.next,
+        window.last,
     )
 
 

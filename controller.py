@@ -15,18 +15,24 @@ class Controller:
         game: Game,
         chess_board: ChessBoard,
         move_list: MoveList,
+        first: QPushButton,
         previous: QPushButton,
         next: QPushButton,
+        last: QPushButton,
     ):
         self.game = game
         self.chess_board = chess_board
         self.move_list = move_list
+        self.first = first
         self.previous = previous
         self.next = next
+        self.last = last
         self.currentTurnAndNumber = (chess.WHITE, 0)
 
+        self.first.clicked.connect(self.firstMove)
         self.previous.clicked.connect(self.previousMove)
         self.next.clicked.connect(self.nextMove)
+        self.last.clicked.connect(self.lastMove)
 
         self.move_list.setMoves(game.getMoves())
         self.updateMoveListPosition()
@@ -64,6 +70,22 @@ class Controller:
         if instant:
             self.chess_board.cancelAnimation()
 
+    def firstMove(self):
+        self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
+
+        self.game.goToStart()
+        self.chess_board.setupBoard(self.game.board)
+        self.updateMoveListPosition()
+
+    def lastMove(self):
+        self.chess_board.cancelAnimation()
+        self.chess_board.clearClicks()
+
+        self.game.goToEnd()
+        self.chess_board.setupBoard(self.game.board)
+        self.updateMoveListPosition()
+
     def nextMove(self):
         self.chess_board.cancelAnimation()
         self.chess_board.clearClicks()
@@ -71,7 +93,6 @@ class Controller:
         if not self.game.hasMoreMoves():
             return
 
-        self.game.game
         self.makeMove()
 
         self.updateMoveListPosition()

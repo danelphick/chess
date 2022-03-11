@@ -75,7 +75,10 @@ class MoveList(QtWidgets.QScrollArea):
         self.move_grid.setColumnStretch(3, 1)
 
     def styleMove(self, turnAndNumber, style, ensureVisible=False):
-        if turnAndNumber is not None:
+        if turnAndNumber is None:
+            # This is the 0th move before anything has started
+            self.ensureVisible(0, 0)
+        else:
             turn, number = turnAndNumber
             item = self.move_grid.itemAtPosition(number - 1, 2 - int(turn))
             if item is not None:

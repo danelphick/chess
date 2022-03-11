@@ -54,6 +54,16 @@ class Game:
             self.ply = self.ply + 1
         return plies == 0
 
+    def goToStart(self):
+        self.game = self.game.root()
+        self.ply = 0
+        self.board = self.game.board()
+
+    def goToEnd(self):
+        self.game = self.game.end()
+        self.ply = self.game.ply()
+        self.board = self.game.board()
+
     def goBack(self) -> bool:
         """
         Go back a single move.
