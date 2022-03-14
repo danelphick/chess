@@ -161,6 +161,25 @@ class ChessBoard(QLabel):
     firstClickSquare: Optional[int]
     dragPiece: Optional[Piece]
     validSquares: list[chess.Square]
+    mouseOverSquare: Optional[chess.Square]
+
+    def __init__(self):
+        super().__init__()
+
+        self.anim = None
+        self.positions = {}
+        self.firstClickSquare = None
+        self.moveHandler = None
+        self.lastMove = None
+        self.checkSquare = None
+        self.validSquares = []
+        self.mouseOverSquare = None
+
+        canvas = QtGui.QPixmap(WIDTH, HEIGHT)
+        canvas.fill(Qt.gray)
+        self.setPixmap(canvas)
+        self.drawBoard()
+        self.dragWidget = None
 
     def setPieceToMove(self, square):
         pass
@@ -169,6 +188,7 @@ class ChessBoard(QLabel):
     def dragStart(self, pos: QtCore.QPoint) -> None:
         pos = self.mapFromGlobal(pos)
         square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
+        self.mouseOverSquare = square
         piece = self.positions[square]
         if self.moveHandler.whoseTurn() == piece.color:
             self.validSquares = self.moveHandler.getValidMoveSquares(square)
@@ -204,6 +224,17 @@ class ChessBoard(QLabel):
             pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
         )
 
+        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y()))
+        if square == self.mouseOverSquare:
+            return
+        if square not in self.validSquares:
+            if self.mouseOverSquare is None:
+                return
+            self.mouseOverSquare = None
+        else:
+            self.mouseOverSquare = square
+        self.drawBoard()
+
     def dragEnd(self, pos: QtCore.QPoint) -> None:
         if self.dragPiece is None:
             return
@@ -216,23 +247,6 @@ class ChessBoard(QLabel):
 
         self.dragPiece.widget.setParent(None)
         self.dragPiece = None
-
-    def __init__(self):
-        super().__init__()
-
-        self.anim = None
-        self.positions = {}
-        self.firstClickSquare = None
-        self.moveHandler = None
-        self.lastMove = None
-        self.checkSquare = None
-        self.validSquares = []
-
-        canvas = QtGui.QPixmap(WIDTH, HEIGHT)
-        canvas.fill(Qt.gray)
-        self.setPixmap(canvas)
-        self.drawBoard()
-        self.dragWidget = None
 
     def setupBoard(self, board: chess.Board):
         for piece in self.positions.values():
@@ -356,7 +370,13 @@ class ChessBoard(QLabel):
             for x in range(0, 8):
                 # This draws the board upside down hence 7-y
                 square = chess.square(x, 7 - y)
-                if self.lastMove is not None and (
+                if square == self.mouseOverSquare:
+                    color = (
+                        ChessBoard.SELECTED_DARK_SQUARE
+                        if (x + y) % 2 == 1
+                        else ChessBoard.SELECTED_LIGHT_SQUARE
+                    )
+                elif self.lastMove is not None and (
                     square == self.lastMove[0] or square == self.lastMove[1]
                 ):
                     color = (
@@ -437,6 +457,7 @@ class ChessBoard(QLabel):
                         radius,
                         radius,
                     )
+                    painter.setClipping(False)
 
         painter.end()
         self.setPixmap(canvas)
