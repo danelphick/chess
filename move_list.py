@@ -110,8 +110,8 @@ class MoveList(QtWidgets.QScrollArea):
         row = number - 1
         if turn == chess.BLACK:
             # delete the black move and increment the number before starting the loop
-            if item := self.move_grid.itemAtPosition(row, 2) is not None:
-                if widget := item.widget() is not None:
+            if (item := self.move_grid.itemAtPosition(row, 2)) is not None:
+                if (widget := item.widget()) is not None:
                     widget.setParent(None)
             row = row + 1
 
