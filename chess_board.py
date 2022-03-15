@@ -168,6 +168,7 @@ class ChessBoard(QLabel):
 
         self.anim = None
         self.positions = {}
+        self.dragPiece = None
         self.firstClickSquare = None
         self.moveHandler = None
         self.lastMove = None
