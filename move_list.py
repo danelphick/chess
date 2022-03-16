@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QLabel
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 
 import chess
 
@@ -77,14 +77,15 @@ class MoveList(QtWidgets.QScrollArea):
     def styleMove(self, turnAndNumber, style, ensureVisible=False):
         if turnAndNumber is None:
             # This is the 0th move before anything has started
-            self.ensureVisible(0, 0)
+            if ensureVisible:
+                self.ensureVisible(0, 0)
         else:
             turn, number = turnAndNumber
             item = self.move_grid.itemAtPosition(number - 1, 2 - int(turn))
             if item is not None:
                 item.widget().setStyleSheet(style)
                 if ensureVisible:
-                    self.ensureWidgetVisible(item.widget())
+                    QtCore.QTimer.singleShot(0, lambda: self.ensureWidgetVisible(item.widget()))
 
     def setCurrentMove(self, new, old):
         if old != new:
