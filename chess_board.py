@@ -448,7 +448,7 @@ class ChessBoard(QLabel):
                         x * SQUARE_SIZE + LEFT_MARGIN,
                         y * SQUARE_SIZE + TOP_MARGIN,
                         SQUARE_SIZE,
-                        SQUARE_SIZE
+                        SQUARE_SIZE,
                     )
                     painter.drawEllipse(
                         QtCore.QPointF(
