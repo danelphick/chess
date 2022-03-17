@@ -371,7 +371,7 @@ class ChessBoard(QLabel):
             for x in range(0, 8):
                 # This draws the board upside down hence 7-y
                 square = chess.square(x, 7 - y)
-                if square == self.mouseOverSquare:
+                if square == self.mouseOverSquare and self.firstClickSquare is not None:
                     color = (
                         ChessBoard.SELECTED_DARK_SQUARE
                         if (x + y) % 2 == 1
