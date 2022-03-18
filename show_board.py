@@ -48,29 +48,28 @@ class MainWindow(QMainWindow):
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         top_layout.addWidget(self.board_widget)
 
-        # self.style().standardIcon(QtWidgets.QStyle.SP_ArrowBack)
         self.first = QPushButton("|<")
         self.previous = QPushButton("<")
         self.next = QPushButton(">")
         self.last = QPushButton(">|")
 
-        right_panel = QWidget()
-        top_layout.addWidget(right_panel)
+        tabView = QtWidgets.QTabWidget()
         right_panel_layout = QVBoxLayout()
-        right_panel.setLayout(right_panel_layout)
-        navigation_widget = QWidget()
+        top_layout.addLayout(right_panel_layout)
+        self.move_list = MoveList()
+
+        tabView.addTab(self.move_list, "Game")
+        tabView.addTab(QWidget(), "Database")
+
+        right_panel_layout.addWidget(tabView)
         navigation_layout = QHBoxLayout()
         navigation_layout.setSpacing(2)
-        navigation_widget.setLayout(navigation_layout)
         navigation_layout.addWidget(self.first)
         navigation_layout.addWidget(self.previous)
         navigation_layout.addWidget(self.next)
         navigation_layout.addWidget(self.last)
 
-        self.move_list = MoveList()
-
-        right_panel_layout.addWidget(self.move_list)
-        right_panel_layout.addWidget(navigation_widget)
+        right_panel_layout.addLayout(navigation_layout)
         self.setCentralWidget(self.root)
 
         QtGui.QShortcut(QtGui.QKeySequence.MoveToNextChar, self.next, self.next.click)
@@ -78,6 +77,14 @@ class MainWindow(QMainWindow):
             QtGui.QKeySequence.MoveToPreviousChar,
             self.previous,
             self.previous.click,
+        )
+        QtGui.QShortcut(
+            QtGui.QKeySequence.MoveToStartOfDocument, self.first, self.first.click
+        )
+        QtGui.QShortcut(
+            QtGui.QKeySequence.MoveToEndOfDocument,
+            self.last,
+            self.last.click,
         )
 
     def setFromGame(self, board: chess.Board, pgn: chess.pgn.Game):
