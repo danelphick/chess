@@ -7,7 +7,6 @@ import sqlite3
 import yaml
 
 board = chess.Board()
-# print(list(board.legal_moves))
 
 with open('config.yaml', 'r') as file:
    config = yaml.safe_load(file)

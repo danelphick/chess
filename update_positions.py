@@ -11,8 +11,6 @@ cur = con.cursor()
 pgns = []
 total_rows = cur.execute("SELECT COUNT(1) FROM raw_games;").fetchone()[0]
 
-# cur.execute("SELECT id, date, pgn FROM raw_games ORDER BY date;")
-
 cur.execute("""SELECT id, date, pgn FROM (
     SELECT raw_games.id, date, pgn, game_id
     FROM raw_games LEFT JOIN positions ON id = game_id)
@@ -21,9 +19,6 @@ cur.execute("""SELECT id, date, pgn FROM (
 positions = {}
 
 total_moves = 0
-
-# last_game_id = cur.execute("SELECT MAX(game_id) FROM positions").fetchone()[0];
-# last_game_id = 0 if last_game_id is None else last_game_id
 
 write_cursor = con.cursor()
 

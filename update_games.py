@@ -18,9 +18,6 @@ cur.execute(
   WHERE game_id is NULL;"""
 )
 
-# last_game_id = cur.execute("SELECT MAX(game_id) FROM positions").fetchone()[0];
-# last_game_id = 0 if last_game_id is None else last_game_id
-
 write_cursor = con.cursor()
 
 index = 0
