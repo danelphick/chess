@@ -21,6 +21,7 @@ class MoveList(QtWidgets.QScrollArea):
     def __init__(self):
         super().__init__()
         self.setMoves([])
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff);
 
     def removeMove(self, row, color):
         if color == chess.BLACK:
