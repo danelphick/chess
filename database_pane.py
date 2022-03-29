@@ -34,6 +34,7 @@ class DatabasePane(QtWidgets.QScrollArea):
             total_moves = move[4]
             total_label = QLabel(str(total_moves))
             total_label.setStyleSheet(DatabasePane.MOVE_STYLE)
+            total_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self.move_grid.addWidget(total_label, row, 1)
 
             win_percentage = round(move[0] / total_moves * 100)
