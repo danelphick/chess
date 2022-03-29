@@ -15,6 +15,7 @@ import chess
 import chess.pgn
 from chess_board import ChessBoard
 from controller import Controller
+from database_pane import DatabasePane
 from move_list import MoveList
 from game import Game
 
@@ -26,6 +27,8 @@ class MainWindow(QMainWindow):
     board_widget: ChessBoard
     timer: QtCore.QTimer
     next: QPushButton
+    move_list: MoveList
+    database_pane: DatabasePane
 
     def __init__(self):
         super().__init__()
@@ -57,9 +60,10 @@ class MainWindow(QMainWindow):
         right_panel_layout = QVBoxLayout()
         top_layout.addLayout(right_panel_layout)
         self.move_list = MoveList()
-
         tabView.addTab(self.move_list, "Game")
-        tabView.addTab(QWidget(), "Database")
+
+        self.database_pane = DatabasePane()
+        tabView.addTab(self.database_pane, "Database")
 
         right_panel_layout.addWidget(tabView)
         navigation_layout = QHBoxLayout()
@@ -86,10 +90,6 @@ class MainWindow(QMainWindow):
             self.last,
             self.last.click,
         )
-
-    def setFromGame(self, board: chess.Board, pgn: chess.pgn.Game):
-        self.board_widget.setup(board)
-        self.move_list.setMoves(pgn.mainline())
 
 
 pgn_text = """
@@ -124,6 +124,7 @@ def setupGame(pgn_text):
         game,
         window.board_widget,
         window.move_list,
+        window.database_pane,
         window.first,
         window.previous,
         window.next,

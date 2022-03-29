@@ -1,18 +1,18 @@
-import berserk
-import chess
-import chess.pgn
-from datetime import datetime
 import io
 import sqlite3
+from datetime import datetime
+
+import berserk
 import yaml
+
+import chess
+import chess.pgn
+from config import config
 
 board = chess.Board()
 
-with open('config.yaml', 'r') as file:
-   config = yaml.safe_load(file)
-
-session = berserk.TokenSession(config['lichess']['api_token'])
-username = config['lichess']['username']
+session = berserk.TokenSession(config()['lichess']['api_token'])
+username = config()['lichess']['username']
 client = berserk.Client(session=session)
 
 con = sqlite3.connect("/Users/dan/github/chess/games.db")
