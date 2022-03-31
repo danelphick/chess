@@ -28,6 +28,8 @@ class DatabasePane(QtWidgets.QScrollArea):
 
         self.move_grid.setSpacing(0)
         self.move_grid.setColumnStretch(3, 1)
+        self.move_grid.setColumnMinimumWidth(0, 50)
+        self.move_grid.setColumnMinimumWidth(1, 60)
         self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
         win_color = QColor(0x3E9833)
@@ -53,6 +55,7 @@ class DatabasePane(QtWidgets.QScrollArea):
             loss_percentage = roundedPercentageForUi(move[2] / total_moves)
 
             chances_label = QLabel()
+            chances_label.setMinimumSize(100, 20)
             canvas = QtGui.QPixmap(100, 20)
             painter = QtGui.QPainter(canvas)
             painter.fillRect(0, 0, win_percentage, 20, win_color)
