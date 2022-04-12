@@ -5,6 +5,8 @@ import io
 import sqlite3
 from pyparsing import White
 from tabulate import tabulate
+import functools
+
 
 # Open a database from a given file name
 
@@ -19,6 +21,7 @@ class ChessDatabase:
     def __init__(self, database_file):
         self.con = sqlite3.connect(database_file)
 
+    @functools.cache
     def lookupPosition(self, epd: string, user: string, color: chess.Color):
         cur = self.con.cursor()
         cur.execute(
