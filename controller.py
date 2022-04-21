@@ -45,6 +45,15 @@ class Controller:
         self.last.clicked.connect(self.lastMove)
 
         self.move_list.setMoves(game.getMoves())
+        b = game.board.copy()
+        positions = [b.epd()]
+        for m in game.getMoves():
+            b.push_uci(m.uci())
+            positions.append(b.epd())
+        self.database.lookupPositions(
+            positions, config()["lichess"]["username"], chess.WHITE
+        )
+
         self.database_pane.setMoves(
             self.database.lookupPosition(
                 game.board.epd(), config()["lichess"]["username"], chess.WHITE
