@@ -71,9 +71,7 @@ class WinDrawLossWidget(ClickableLabel):
                     text,
                 )
 
-        drawPercentageText(
-            0, win_width, self.win_percentage, QColorConstants.White
-        )
+        drawPercentageText(0, win_width, self.win_percentage, QColorConstants.White)
         drawPercentageText(
             win_width,
             draw_width,
@@ -135,23 +133,35 @@ class DatabasePane(QtWidgets.QScrollArea):
         self.move_grid.setColumnMinimumWidth(2, 100)
         self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
-        for move, row in zip(moves, range(len(moves))):
-            move_text = move[3]
-            if move_text is None:
-                continue
-            callback = lambda move_text=move_text: controller.moveFromSan(move_text)
+        if moves:
+            for move, row in zip(moves, range(len(moves))):
+                move_text = move[3]
+                if move_text is None:
+                    continue
+                callback = lambda move_text=move_text: controller.moveFromSan(move_text)
 
-            move_label = TableLabel(callback, move_text, QtCore.Qt.AlignLeft)
-            self.move_grid.addWidget(move_label, row, 0)
+                move_label = TableLabel(callback, move_text, QtCore.Qt.AlignLeft)
+                self.move_grid.addWidget(move_label, row, 0)
 
-            total_moves = move[4]
-            total_label = TableLabel(callback, str(total_moves), QtCore.Qt.AlignRight)
-            self.move_grid.addWidget(total_label, row, 1)
+                total_moves = move[4]
+                total_label = TableLabel(
+                    callback, str(total_moves), QtCore.Qt.AlignRight
+                )
+                self.move_grid.addWidget(total_label, row, 1)
 
+                self.move_grid.addWidget(
+                    WinDrawLossWidget(callback, move[0], move[1], move[2], total_moves),
+                    row,
+                    2,
+                )
+        else:
             self.move_grid.addWidget(
-                WinDrawLossWidget(callback, move[0], move[1], move[2], total_moves),
-                row,
-                2,
+                QLabel("No moves found in database"),
+                0,
+                0,
+                1,
+                -1,
+                QtCore.Qt.AlignHCenter,
             )
 
         self.move_grid.setRowStretch(len(moves) + 1, 1)
