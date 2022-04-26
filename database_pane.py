@@ -41,7 +41,6 @@ class WinDrawLossWidget(ClickableLabel):
 
     def draw(self):
         width = self.width()
-        print(width)
         win_width = round(width / 100 * self.win_percentage)
         draw_width = round(width / 100 * self.draw_percentage)
         loss_width = width - win_width - draw_width
