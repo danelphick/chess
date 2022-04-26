@@ -73,7 +73,6 @@ class MoveList(QtWidgets.QScrollArea):
             pass
 
         self.move_grid.setRowStretch(row + 1, 1)
-        self.move_grid.setColumnStretch(3, 1)
 
     def styleMove(self, turnAndNumber, style, ensureVisible=False):
         if turnAndNumber is None:

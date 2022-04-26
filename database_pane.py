@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QColorConstants
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtWidgets import QLabel, QWidget, QSizePolicy
 
 
 def roundedPercentage(value):
@@ -35,31 +35,34 @@ class WinDrawLossWidget(ClickableLabel):
     DRAW_COLOR = QColorConstants.Gray
     LOSS_COLOR = QColor(0xD32F2F)
 
-    def __init__(self, callback, wins, draws, losses, total_moves):
-        super().__init__(None, callback)
-        win_percentage = roundedPercentage(wins / total_moves)
-        draw_percentage = roundedPercentage(draws / total_moves)
-        loss_percentage = roundedPercentage(losses / total_moves)
+    win_percentage: int
+    draw_percentage: int
+    loss_percentage: int
 
-        self.setMinimumSize(100, 20)
-        canvas = QtGui.QPixmap(100, 20)
+    def draw(self):
+        width = self.width()
+        print(width)
+        win_width = round(width / 100 * self.win_percentage)
+        draw_width = round(width / 100 * self.draw_percentage)
+        loss_width = width - win_width - draw_width
+        canvas = QtGui.QPixmap(width, 20)
         painter = QtGui.QPainter(canvas)
-        painter.fillRect(0, 0, win_percentage, 20, self.WIN_COLOR)
-        painter.fillRect(win_percentage, 0, draw_percentage, 20, self.DRAW_COLOR)
+        painter.fillRect(0, 0, win_width, 20, self.WIN_COLOR)
+        painter.fillRect(win_width, 0, draw_width, 20, self.DRAW_COLOR)
         painter.fillRect(
-            win_percentage + draw_percentage,
+            win_width + draw_width,
             0,
-            100 - (win_percentage + draw_percentage),
+            loss_width,
             20,
             self.LOSS_COLOR,
         )
 
         def drawPercentageText(left, width, value, color):
-            MINIMUM_PERCENTAGE = 18
-            MINIMUM_PERCENTAGE_WITH_SIGN = 30
-            if value > MINIMUM_PERCENTAGE:
+            MINIMUM_WIDTH = 18
+            MINIMUM_WIDTH_WITH_SIGN = 30
+            if width > MINIMUM_WIDTH:
                 text = str(value)
-                if value > MINIMUM_PERCENTAGE_WITH_SIGN:
+                if width > MINIMUM_WIDTH_WITH_SIGN:
                     text += "%"
                 painter.setPen(color)
                 painter.drawText(
@@ -68,28 +71,52 @@ class WinDrawLossWidget(ClickableLabel):
                     text,
                 )
 
-        drawPercentageText(0, win_percentage, win_percentage, QColorConstants.White)
         drawPercentageText(
-            win_percentage,
-            100 - loss_percentage,
-            draw_percentage,
+            0, win_width, self.win_percentage, QColorConstants.White
+        )
+        drawPercentageText(
+            win_width,
+            draw_width,
+            self.draw_percentage,
             QColorConstants.Black,
         )
         drawPercentageText(
-            100 - loss_percentage,
-            loss_percentage,
-            loss_percentage,
+            width - loss_width,
+            loss_width,
+            self.loss_percentage,
             QColorConstants.White,
         )
 
         painter.end()
         self.setPixmap(canvas)
 
+    def __init__(self, callback, wins, draws, losses, total_moves):
+        super().__init__(None, callback)
+        self.win_percentage = roundedPercentage(wins / total_moves)
+        self.draw_percentage = roundedPercentage(draws / total_moves)
+        self.loss_percentage = roundedPercentage(losses / total_moves)
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.draw()
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(100, 20)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(100, 20)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        self.draw()
+        return super().resizeEvent(event)
+
 
 class DatabasePane(QtWidgets.QScrollArea):
     def __init__(self):
         super().__init__()
         self.setMoves([], None)
+        self.setWidgetResizable(True)
+        (left, _, right, _) = self.move_grid.getContentsMargins()
+        self.setMinimumWidth(50 + 60 + 100 + left + right + 2)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def setMoves(self, moves, controller):
@@ -98,10 +125,14 @@ class DatabasePane(QtWidgets.QScrollArea):
         self.move_grid = QtWidgets.QGridLayout()
         self.widget.setLayout(self.move_grid)
 
+        (left, _, right, _) = self.move_grid.getContentsMargins()
         self.move_grid.setSpacing(0)
-        self.move_grid.setColumnStretch(3, 1)
+        self.move_grid.setColumnStretch(0, 0)
+        self.move_grid.setColumnStretch(1, 0)
+        self.move_grid.setColumnStretch(2, 1)
         self.move_grid.setColumnMinimumWidth(0, 50)
         self.move_grid.setColumnMinimumWidth(1, 60)
+        self.move_grid.setColumnMinimumWidth(2, 100)
         self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
         for move, row in zip(moves, range(len(moves))):
@@ -124,4 +155,3 @@ class DatabasePane(QtWidgets.QScrollArea):
             )
 
         self.move_grid.setRowStretch(len(moves) + 1, 1)
-        self.move_grid.setColumnStretch(3, 1)
