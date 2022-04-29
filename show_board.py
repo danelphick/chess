@@ -1,6 +1,11 @@
+import asyncio
+import functools
 import io
 import pathlib
 import sys
+
+import qasync
+from qasync import asyncSlot, asyncClose, QApplication
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
@@ -18,9 +23,6 @@ from controller import Controller
 from database_pane import DatabasePane
 from move_list import MoveList
 from game import Game
-
-app = QtWidgets.QApplication(sys.argv)
-app.setWindowIcon(QtGui.QIcon("pieces/white_knight.svg"))
 
 
 class MainWindow(QMainWindow):
@@ -115,9 +117,11 @@ def openFile():
         pgn_text = pathlib.Path(pgn_file).read_text()
         setupGame(pgn_text)
 
+window = None
+
 
 def setupGame(pgn_text):
-    global controller
+    global controller, window
     pgn = chess.pgn.read_game(io.StringIO(pgn_text))
     game = Game(chess.Board(), pgn)
     controller = Controller(
@@ -132,9 +136,33 @@ def setupGame(pgn_text):
     )
 
 
-window = MainWindow()
-setupGame(pgn_text)
+async def main():
+    global window
+    def close_future(future, loop):
+        loop.call_later(10, future.cancel)
+        future.cancel()
 
-window.show()
+    loop = asyncio.get_event_loop()
+    future = asyncio.Future()
 
-app.exec()
+    app = QApplication.instance()
+    app.setWindowIcon(QtGui.QIcon("pieces/white_knight.svg"))
+
+    if hasattr(app, "aboutToQuit"):
+        getattr(app, "aboutToQuit").connect(
+            functools.partial(close_future, future, loop)
+        )
+
+    window = MainWindow()
+    setupGame(pgn_text)
+
+    window.show()
+
+    await future
+    return True
+
+if __name__ == "__main__":
+    try:
+        qasync.run(main())
+    except asyncio.exceptions.CancelledError:
+        sys.exit(0)

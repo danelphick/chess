@@ -1,12 +1,10 @@
-import string
+import sqlite3
+import aiosqlite
+
+from tabulate import tabulate
+
 import chess
 import chess.pgn
-import io
-import sqlite3
-from pyparsing import White
-from tabulate import tabulate
-import functools
-
 
 # Open a database from a given file name
 
