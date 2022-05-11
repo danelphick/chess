@@ -1,3 +1,4 @@
+import functools
 import asyncio
 
 from PySide6.QtWidgets import QPushButton
@@ -52,27 +53,28 @@ class Controller:
         for m in game.getMoves():
             b.push_uci(m.uci())
             positions.append(b.epd())
-        self.database.lookupPositions(
-            positions, config()["lichess"]["username"], chess.WHITE
-        )
-
-        self.database_pane.setMoves(
-            self.database.lookupPosition(
-                game.board.epd(), config()["lichess"]["username"], chess.WHITE
-            ),
-            self,
+        asyncio.create_task(
+            self.lookupPositions(
+                positions, config()["lichess"]["username"], chess.WHITE
+            )
         )
         self.updateMoveListPosition()
         self.chess_board.setupBoard(game.board)
         self.chess_board.moveHandler = self
 
+    async def lookupPositions(self, positions, username, color):
+        self.database_pane.setMovesLoading()
+        moves = await self.database.lookupPositions(positions, username, color)
+        self.database_pane.setMoves(moves, self)
+
     def updateMoveListPosition(self):
         new = self.game.getTurnAndNumber()
         self.move_list.setCurrentMove(new, self.currentTurnAndNumber)
         self.currentTurnAndNumber = new
-        self.database_pane.setMoves(
-            self.database.lookupPosition(self.game.board.epd(), "keub", chess.WHITE),
-            self,
+        asyncio.create_task(
+            self.lookupPositions(
+                [self.game.board.epd()], config()["lichess"]["username"], chess.WHITE
+            )
         )
 
     def makeMove(self, instant=False):

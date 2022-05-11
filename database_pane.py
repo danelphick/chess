@@ -116,13 +116,24 @@ class DatabasePane(QtWidgets.QScrollArea):
         self.setMinimumWidth(50 + 60 + 100 + left + right + 2)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
+    def setMovesText(self, text):
+        self.widget = QLabel(text)
+        self.widget.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+        self.setWidget(self.widget)
+        self.widget.setContentsMargins(0, 5, 0, 0)
+
+    def setMovesLoading(self):
+        self.setMovesText("Loading moves...")
+
     def setMoves(self, moves, controller):
+        if not moves:
+            self.setMovesText("No moves found in database")
+
         self.widget = QWidget()
         self.setWidget(self.widget)
         self.move_grid = QtWidgets.QGridLayout()
         self.widget.setLayout(self.move_grid)
 
-        (left, _, right, _) = self.move_grid.getContentsMargins()
         self.move_grid.setSpacing(0)
         self.move_grid.setColumnStretch(0, 0)
         self.move_grid.setColumnStretch(1, 0)
