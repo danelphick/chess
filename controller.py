@@ -1,5 +1,5 @@
-import functools
 import asyncio
+import chess.engine
 
 from PySide6.QtWidgets import QPushButton
 
@@ -19,6 +19,8 @@ class Controller:
     database: ChessDatabase
     database_pane: DatabasePane
     currentTurnAndNumber: tuple[chess.Color, int]
+    engine: chess.engine.SimpleEngine
+    backgroundTasks: set[asyncio.Task]
 
     def __init__(
         self,
@@ -40,6 +42,9 @@ class Controller:
         self.next = next
         self.last = last
         self.currentTurnAndNumber = (chess.WHITE, 0)
+        self.backgroundTasks = set()
+        self.engine = None
+        self.examineTasks = []
 
         self.database = ChessDatabase(database_file="games.db")
         self.first.clicked.connect(self.firstMove)
@@ -58,23 +63,109 @@ class Controller:
                 positions, config()["lichess"]["username"], chess.WHITE
             )
         )
+
+        asyncio.create_task(self.startEngine())
+
         self.updateMoveListPosition()
         self.chess_board.setupBoard(game.board)
         self.chess_board.moveHandler = self
+
+    async def startEngine(self):
+        self.transport, self.engine = await chess.engine.popen_uci("stockfish")
 
     async def lookupPositions(self, positions, username, color):
         self.database_pane.setMovesLoading()
         moves = await self.database.lookupPositions(positions, username, color)
         self.database_pane.setMoves(moves, self)
 
+    async def getEngine(self):
+        if self.engine:
+            return self.engine
+
+        await self.startEngine()
+        return self.engine
+
+    async def examinePosition(self, board: chess.Board):
+        try:
+            engine = await self.getEngine()
+
+            if asyncio.current_task() != self.examineTasks[-1]:
+                return
+
+            if len(self.examineTasks) > 1:
+                for i in range(0, len(self.examineTasks) - 1):
+                    task: asyncio.Task = self.examineTasks[i]
+                    if not task.cancelled():
+                        # print("Cancelling task")
+                        task.cancel()
+                        await task
+
+            del self.examineTasks[0:-1]
+
+            # A new task could have been scheduled while we were waiting on cancelling the other tasks
+            if asyncio.current_task() != self.examineTasks[-1]:
+                return
+
+            # try:
+            #     print(f"analysis about to start for {board.peek()}")
+            # except IndexError:
+            #     print(f"analysis about to start for initial board")
+
+            with await engine.analysis(board, chess.engine.Limit(depth=25)) as analysis:
+                # try:
+                #     print(f"analysis started for {board.peek()}")
+                # except IndexError:
+                #     print(f"analysis started for initial board")
+
+                async for info in analysis:
+                    if info.get("score") is not None:
+                        score = info.get("score")
+                        mate = score.is_mate()
+                        if mate:
+                            if mate == 0:
+                                score_text = "Checkmate"
+                            elif mate > 0:
+                                score_text = f"M+{mate}"
+                            else:
+                                score_text = f"M-{-mate}"
+                        else:
+                            score_text = "{:6.2f}".format(
+                                info.get("score").pov(chess.WHITE).score() / 100.0
+                            )
+
+                        depth = info.get("depth")
+                        move = board.san(info.get("pv")[0])
+                        move = info.get("pv")[0]
+                        print(f"{score_text} depth: {depth} {move}")
+
+                    # Arbitrary stop condition.
+                    if info.get("depth", 0) > 30:
+                        break
+
+            # print()
+            self.examineTasks.remove(asyncio.current_task())
+        except asyncio.CancelledError:
+            # print("Cancelled")
+            pass
+
+    def scheduleTask(self, coro):
+        task = asyncio.create_task(coro)
+        self.backgroundTasks.add(task)
+        task.add_done_callback(self.backgroundTasks.discard)
+        return task
+
     def updateMoveListPosition(self):
         new = self.game.getTurnAndNumber()
         self.move_list.setCurrentMove(new, self.currentTurnAndNumber)
         self.currentTurnAndNumber = new
-        asyncio.create_task(
+
+        self.scheduleTask(
             self.lookupPositions(
                 [self.game.board.epd()], config()["lichess"]["username"], chess.WHITE
             )
+        )
+        self.examineTasks.append(
+            self.scheduleTask(self.examinePosition(self.game.board.copy()))
         )
 
     def makeMove(self, instant=False):

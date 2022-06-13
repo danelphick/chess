@@ -49,6 +49,7 @@ class Game:
         """
         while self.game.next() is not None and plies > 0:
             self.game = self.game.next()
+            print(f"advancing move: {self.board.san(self.game.move)}")
             self.board.push(self.game.move)
             plies = plies - 1
             self.ply = self.ply + 1

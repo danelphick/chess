@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import io
+import logging
 import pathlib
 import sys
 
@@ -24,6 +25,8 @@ from database_pane import DatabasePane
 from move_list import MoveList
 from game import Game
 
+
+# logging.basicConfig(level=logging.DEBUG)
 
 class MainWindow(QMainWindow):
     board_widget: ChessBoard
@@ -51,7 +54,9 @@ class MainWindow(QMainWindow):
 
         self.board_widget = ChessBoard()
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
-        top_layout.addWidget(self.board_widget)
+        board_and_analysis_layout = QVBoxLayout()
+        board_and_analysis_layout.addWidget(self.board_widget)
+        top_layout.addLayout(board_and_analysis_layout)
 
         self.first = QPushButton("|<")
         self.previous = QPushButton("<")
