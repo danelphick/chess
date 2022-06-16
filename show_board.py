@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         board_and_analysis_layout.addWidget(self.board_widget)
         self.analysis_widget = QLabel()
         self.analysis_widget.setFixedWidth(self.board_widget.width())
+        self.analysis_widget.setMinimumHeight(50)
         self.analysis_widget.setWordWrap(True)
         self.analysis_widget.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
         board_and_analysis_layout.addWidget(self.analysis_widget)
