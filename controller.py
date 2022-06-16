@@ -98,7 +98,6 @@ class Controller:
                 for i in range(0, len(self.examineTasks) - 1):
                     task: asyncio.Task = self.examineTasks[i]
                     if not task.cancelled():
-                        # print("Cancelling task")
                         task.cancel()
                         await task
 
@@ -108,16 +107,7 @@ class Controller:
             if asyncio.current_task() != self.examineTasks[-1]:
                 return
 
-            # try:
-            #     print(f"analysis about to start for {board.peek()}")
-            # except IndexError:
-            #     print(f"analysis about to start for initial board")
-
             with await engine.analysis(board, chess.engine.Limit(depth=25)) as analysis:
-                # try:
-                #     print(f"analysis started for {board.peek()}")
-                # except IndexError:
-                #     print(f"analysis started for initial board")
 
                 async for info in analysis:
                     if info.get("score") is not None:
@@ -143,10 +133,8 @@ class Controller:
                     if info.get("depth", 0) > 30:
                         break
 
-            # print()
             self.examineTasks.remove(asyncio.current_task())
         except asyncio.CancelledError:
-            # print("Cancelled")
             pass
 
     def scheduleTask(self, coro):
