@@ -1,7 +1,7 @@
 import asyncio
 import chess.engine
 
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QLabel, QPushButton
 
 import chess
 from config import config
@@ -32,6 +32,7 @@ class Controller:
         previous: QPushButton,
         next: QPushButton,
         last: QPushButton,
+        analysis_widget: QLabel,
     ):
         self.game = game
         self.chess_board = chess_board
@@ -41,6 +42,7 @@ class Controller:
         self.previous = previous
         self.next = next
         self.last = last
+        self.analysis_widget = analysis_widget
         self.currentTurnAndNumber = (chess.WHITE, 0)
         self.backgroundTasks = set()
         self.engine = None
@@ -129,14 +131,13 @@ class Controller:
                             else:
                                 score_text = f"M-{-mate}"
                         else:
-                            score_text = "{:6.2f}".format(
+                            score_text = "{:.2f}".format(
                                 info.get("score").pov(chess.WHITE).score() / 100.0
                             )
 
                         depth = info.get("depth")
-                        move = board.san(info.get("pv")[0])
-                        move = info.get("pv")[0]
-                        print(f"{score_text} depth: {depth} {move}")
+                        move = board.variation_san(info.get("pv"))
+                        self.analysis_widget.setText(f"{score_text} depth: {depth} {move}\n")
 
                     # Arbitrary stop condition.
                     if info.get("depth", 0) > 30:

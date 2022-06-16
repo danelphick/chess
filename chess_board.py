@@ -179,6 +179,7 @@ class ChessBoard(QLabel):
         canvas = QtGui.QPixmap(WIDTH, HEIGHT)
         canvas.fill(Qt.gray)
         self.setPixmap(canvas)
+        self.setFixedSize(WIDTH, HEIGHT)
         self.drawBoard()
         self.dragWidget = None
 

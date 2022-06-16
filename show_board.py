@@ -11,6 +11,7 @@ from qasync import asyncSlot, asyncClose, QApplication
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QPushButton,
     QVBoxLayout,
@@ -56,6 +57,11 @@ class MainWindow(QMainWindow):
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         board_and_analysis_layout = QVBoxLayout()
         board_and_analysis_layout.addWidget(self.board_widget)
+        self.analysis_widget = QLabel()
+        self.analysis_widget.setFixedWidth(self.board_widget.width())
+        self.analysis_widget.setWordWrap(True)
+        self.analysis_widget.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        board_and_analysis_layout.addWidget(self.analysis_widget)
         top_layout.addLayout(board_and_analysis_layout)
 
         self.first = QPushButton("|<")
@@ -138,6 +144,7 @@ def setupGame(pgn_text):
         window.previous,
         window.next,
         window.last,
+        window.analysis_widget,
     )
 
 
