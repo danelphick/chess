@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import io
-import logging
 import pathlib
 import sys
 
