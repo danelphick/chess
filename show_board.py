@@ -25,6 +25,7 @@ from database_pane import DatabasePane
 from move_list import MoveList
 from game import Game
 
+controller = None
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -104,6 +105,10 @@ class MainWindow(QMainWindow):
             self.last.click,
         )
 
+    @asyncClose
+    async def closeEvent(self, event):
+        await controller.stop()
+
 
 pgn_text = """
 [White "player 1"]
@@ -118,9 +123,6 @@ c5 15. Qf3 Qd7 16. Bxc5 bxc5 17. Rb3 Rxb3 18. cxb3 Qg4 19. Qxg4 Nxg4 20. a3 f5
 Na3 28. c4 h6 29. Ke3 Kf7 30. Ke4 Ke6 31. h3 Rf7 32. h4 Rd7 33. h5 Rd4+ 34. Ke3
 Nb1 35. c5 Kd5 36. c6 Kc5
 """
-
-controller = None
-
 
 def openFile():
     pgn_file, _ = QtWidgets.QFileDialog.getOpenFileName(filter="*.pgn")
@@ -170,11 +172,14 @@ async def main():
 
     window.show()
 
-    await future
+    try:
+        await future
+    except asyncio.CancelledError:
+        pass
     return True
 
 if __name__ == "__main__":
     try:
         qasync.run(main())
-    except asyncio.exceptions.CancelledError:
+    except asyncio.CancelledError as e:
         sys.exit(0)

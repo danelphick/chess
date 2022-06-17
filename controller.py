@@ -276,3 +276,7 @@ class Controller:
 
     def whoseTurn(self) -> chess.Color:
         return self.game.board.turn
+
+    async def stop(self):
+        self.stopped = True
+        await self.database.close()

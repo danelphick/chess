@@ -1,4 +1,5 @@
 import aiosqlite
+import asyncio
 
 from tabulate import tabulate
 
@@ -15,7 +16,7 @@ import chess.pgn
 class ChessDatabase:
     cache: dict[str, list[str]]
     file: str
-    con: aiosqlite.Connection
+    con: asyncio.Future
 
     def __init__(self, database_file):
         self.cache = {}
@@ -24,8 +25,8 @@ class ChessDatabase:
 
     async def conn(self):
         if self.con is None:
-            self.con = await(aiosqlite.connect(self.file))
-        return self.con
+            self.con = asyncio.ensure_future(aiosqlite.connect(self.file))
+        return await self.con
 
     async def findMultipleEpds(cur, epds: list[str], user: str, color: chess.Color):
         await cur.executescript(
@@ -106,3 +107,7 @@ class ChessDatabase:
             if epd not in self.cache:
                 self.cache[epd] = []
         return self.cache[epds[0]]
+
+    async def close(self):
+        if self.con is not None:
+            await (await self.conn()).close()
