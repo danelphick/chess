@@ -8,6 +8,7 @@ from config import config
 from chess_board import ChessBoard
 from database import ChessDatabase
 from database_pane import DatabasePane
+from eval_bar import EvalBar
 from game import Game
 from move_list import MoveList
 
@@ -26,6 +27,7 @@ class Controller:
         self,
         game: Game,
         chess_board: ChessBoard,
+        eval_bar: EvalBar,
         move_list: MoveList,
         database_pane: DatabasePane,
         first: QPushButton,
@@ -36,6 +38,7 @@ class Controller:
     ):
         self.game = game
         self.chess_board = chess_board
+        self.eval_bar = eval_bar
         self.move_list = move_list
         self.database_pane = database_pane
         self.first = first
@@ -110,8 +113,9 @@ class Controller:
             with await engine.analysis(board, chess.engine.Limit(depth=25)) as analysis:
 
                 async for info in analysis:
-                    if info.get("score") is not None:
-                        score = info.get("score")
+                    score = info.get("score")
+                    if score is not None:
+                        score = score
                         mate = score.is_mate()
                         if mate:
                             if mate == 0:
@@ -122,12 +126,13 @@ class Controller:
                                 score_text = f"M-{-mate}"
                         else:
                             score_text = "{:.2f}".format(
-                                info.get("score").pov(chess.WHITE).score() / 100.0
+                                score.pov(chess.WHITE).score() / 100.0
                             )
 
                         depth = info.get("depth")
                         move = board.variation_san(info.get("pv"))
                         self.analysis_widget.setText(f"{score_text} depth: {depth} {move}\n")
+                        self.eval_bar.updateBar(score)
 
                     # Arbitrary stop condition.
                     if info.get("depth", 0) > 30:

@@ -22,6 +22,7 @@ import chess.pgn
 from chess_board import ChessBoard
 from controller import Controller
 from database_pane import DatabasePane
+from eval_bar import EvalBar
 from move_list import MoveList
 from game import Game
 
@@ -31,6 +32,7 @@ controller = None
 
 class MainWindow(QMainWindow):
     board_widget: ChessBoard
+    eval_board: EvalBar
     timer: QtCore.QTimer
     next: QPushButton
     move_list: MoveList
@@ -53,10 +55,15 @@ class MainWindow(QMainWindow):
         top_layout = QHBoxLayout()
         self.root.setLayout(top_layout)
 
+        self.eval_bar = EvalBar()
+
         self.board_widget = ChessBoard()
-        self.board_widget.setAlignment(QtCore.Qt.AlignTop)
+        self.board_widget.setAlignment(QtCore.Qt.AlignTop)        
         board_and_analysis_layout = QVBoxLayout()
-        board_and_analysis_layout.addWidget(self.board_widget)
+        eval_and_board_layout = QHBoxLayout()
+        eval_and_board_layout.addWidget(self.eval_bar)
+        eval_and_board_layout.addWidget(self.board_widget)
+        board_and_analysis_layout.addLayout(eval_and_board_layout)
         self.analysis_widget = QLabel()
         self.analysis_widget.setFixedWidth(self.board_widget.width())
         self.analysis_widget.setMinimumHeight(50)
@@ -140,6 +147,7 @@ def setupGame(pgn_text):
     controller = Controller(
         game,
         window.board_widget,
+        window.eval_bar,
         window.move_list,
         window.database_pane,
         window.first,
