@@ -39,7 +39,7 @@ class ChessDatabase:
             """
             INSERT INTO temp_positions VALUES (?);
             """,
-            [(epd,) for epd in epds]
+            [(epd,) for epd in epds],
         )
         await cur.execute(
             f"""
@@ -63,7 +63,6 @@ class ChessDatabase:
         )
 
     async def findSingleEpd(cur, epd: str, user: str, color: chess.Color):
-
         await cur.execute(
             f"""
             SELECT p.epd,
@@ -85,27 +84,45 @@ class ChessDatabase:
         )
 
     async def populateCache(self, epds: list[str], user: str, color: chess.Color):
+        future = asyncio.get_event_loop().create_future()
+        for epd in epds:
+            self.cache[epd] = future
+
         con = await self.conn()
+
         async with con.cursor() as cur:
             if len(epds) > 1:
                 await ChessDatabase.findMultipleEpds(cur, epds, user, color)
             else:
                 await ChessDatabase.findSingleEpd(cur, epds[0], user, color)
 
+            results = {}
             async for (epd, win, draw, loss, next_move, count) in cur:
-                if epd in self.cache:
-                    self.cache[epd].append((win, draw, loss, next_move, count))
-                else:
-                    self.cache[epd] = [(win, draw, loss, next_move, count)]
+                row = (win, draw, loss, next_move, count)
+                if epd not in results:
+                    results[epd] = set()
+                results[epd].add(row)
 
-    async def lookupPositions(self, epds: list[str], user: str, color: chess.Color):
-        unknown_epds = [epds for epd in epds if epd not in self.cache]
-        if unknown_epds:
-            await self.populateCache(epds, user, color)
+            for (epd, row) in results.items():
+                self.cache[epd] = row
 
         for epd in epds:
-            if epd not in self.cache:
+            if self.cache[epd] == future:
                 self.cache[epd] = []
+
+        future.set_result(True)
+
+    async def lookupPositions(self, epds: list[str], user: str, color: chess.Color):
+        unknown_epds = [epd for epd in epds if epd not in self.cache]
+        if unknown_epds:
+            await self.populateCache(unknown_epds, user, color)
+        future_epds = [
+            self.cache[epd]
+            for epd in epds
+            if epd in self.cache and isinstance(self.cache[epd], asyncio.Future)
+        ]
+        await asyncio.gather(*future_epds)
+
         return self.cache[epds[0]]
 
     async def close(self):
