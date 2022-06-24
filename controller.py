@@ -57,7 +57,7 @@ class Controller:
         self.next.clicked.connect(self.nextMove)
         self.last.clicked.connect(self.lastMove)
 
-        self.move_list.setMoves(game.getMoves())
+        self.move_list.setMoves(self, game.getMoves())
         b = game.board.copy()
         positions = [b.epd()]
         for m in game.getMoves():
@@ -284,3 +284,15 @@ class Controller:
     async def stop(self):
         self.stopped = True
         await self.database.close()
+
+    def selectMove(self, turn, number):
+        self.chess_board.cancelAnimation()
+
+        self.game.goToStart()
+        self.game.advance(number * 2 - 1)
+        if turn == chess.BLACK:
+            self.game.advance()
+
+        self.chess_board.setupBoard(self.game.board)
+        self.updateMoveListPosition()
+        self.updateBoard()
