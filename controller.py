@@ -162,6 +162,13 @@ class Controller:
             self.scheduleTask(self.examinePosition(self.game.board.copy()))
         )
 
+    def updateBoard(self):
+        self.chess_board.clearClicks()
+        self.chess_board.setLastMove(
+            self.game.getPreviousMove(), checkSquare=self.game.getKingCheckSquare()
+        )
+        self.chess_board.drawBoard()
+
     def makeMove(self, instant=False):
         """Carry out the next move in the game."""
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
@@ -181,33 +188,29 @@ class Controller:
 
         self.game.advance()
 
-        self.chess_board.setLastMove(
-            (fromPos, toPos), checkSquare=self.game.getKingCheckSquare()
-        )
-        self.chess_board.clearClicks()
-        self.chess_board.drawBoard()
+        self.updateBoard()
+
         if instant:
             self.chess_board.cancelAnimation()
 
     def firstMove(self):
         self.chess_board.cancelAnimation()
-        self.chess_board.clearClicks()
 
         self.game.goToStart()
         self.chess_board.setupBoard(self.game.board)
         self.updateMoveListPosition()
+        self.updateBoard()
 
     def lastMove(self):
         self.chess_board.cancelAnimation()
-        self.chess_board.clearClicks()
 
         self.game.goToEnd()
         self.chess_board.setupBoard(self.game.board)
         self.updateMoveListPosition()
+        self.updateBoard()
 
     def nextMove(self):
         self.chess_board.cancelAnimation()
-        self.chess_board.clearClicks()
 
         if not self.game.hasMoreMoves():
             return
@@ -218,17 +221,13 @@ class Controller:
 
     def previousMove(self):
         self.chess_board.cancelAnimation()
-        self.chess_board.clearClicks()
 
         if not self.game.goBack():
             return
 
         (fromPos, toPos) = self.game.getFromSquare(), self.game.getToSquare()
 
-        self.chess_board.setLastMove(
-            self.game.getPreviousMove(), checkSquare=self.game.getKingCheckSquare()
-        )
-        self.chess_board.drawBoard()
+        self.updateBoard()
 
         if self.game.getPromotionPiece() is not None:
             self.chess_board.changePiece(toPos, chess.PAWN)
