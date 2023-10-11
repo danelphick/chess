@@ -132,7 +132,7 @@ class Controller:
                         depth = info.get("depth")
                         move = board.variation_san(info.get("pv"))
                         self.analysis_widget.setText(f"{score_text} depth: {depth} {move}\n")
-                        self.eval_bar.updateBar(score)
+                        self.eval_bar.setValue(score.white().score())
 
                     # Arbitrary stop condition.
                     if info.get("depth", 0) > 30:

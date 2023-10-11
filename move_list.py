@@ -107,7 +107,7 @@ class MoveList(QtWidgets.QScrollArea):
     def addMove(self, turnAndNumber, move):
         turn, number = turnAndNumber
         row = number - 1
-        move_label = self.createClickableLabel(move)
+        move_label = self.createClickableLabel(move, turnAndNumber)
         if turn == chess.WHITE:
             number_label = self.createClickableLabel(str(number), turnAndNumber)
             self.move_grid.addWidget(number_label, row, 0)
