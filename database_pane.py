@@ -144,7 +144,9 @@ class DatabasePane(QtWidgets.QScrollArea):
         self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
         if moves:
-            for move, row in zip(moves, range(len(moves))):
+            for move, row in zip(
+                sorted(moves, key=lambda x: x[4], reverse=True), range(len(moves))
+            ):
                 move_text = move[3]
                 if move_text is None:
                     continue
