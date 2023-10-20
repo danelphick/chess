@@ -25,6 +25,7 @@ from database_pane import DatabasePane
 from eval_bar import EvalBar
 from move_list import MoveList
 from game import Game
+from openings_pane import OpeningsPane
 
 controller = None
 
@@ -37,6 +38,7 @@ class MainWindow(QMainWindow):
     next: QPushButton
     move_list: MoveList
     database_pane: DatabasePane
+    openings_pane: OpeningsPane
 
     def __init__(self):
         super().__init__()
@@ -75,7 +77,7 @@ class MainWindow(QMainWindow):
         self.eval_bar.setMaximum(1000)
 
         self.board_widget = ChessBoard()
-        self.board_widget.setAlignment(QtCore.Qt.AlignTop)        
+        self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         board_and_analysis_layout = QVBoxLayout()
         eval_and_board_layout = QHBoxLayout()
         eval_and_board_layout.addWidget(self.eval_bar)
@@ -102,6 +104,9 @@ class MainWindow(QMainWindow):
 
         self.database_pane = DatabasePane()
         tabView.addTab(self.database_pane, "Database")
+
+        self.openings_pane = OpeningsPane()
+        tabView.addTab(self.openings_pane, "Openings")
 
         right_panel_layout.addWidget(tabView)
         navigation_layout = QHBoxLayout()
@@ -167,6 +172,7 @@ def setupGame(pgn_text):
         window.eval_bar,
         window.move_list,
         window.database_pane,
+        window.openings_pane,
         window.first,
         window.previous,
         window.next,

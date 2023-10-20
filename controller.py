@@ -11,6 +11,7 @@ from database_pane import DatabasePane
 from eval_bar import EvalBar
 from game import Game
 from move_list import MoveList
+from openings_pane import OpeningsPane
 
 
 class Controller:
@@ -30,6 +31,7 @@ class Controller:
         eval_bar: EvalBar,
         move_list: MoveList,
         database_pane: DatabasePane,
+        openings_pane: OpeningsPane,
         first: QPushButton,
         previous: QPushButton,
         next: QPushButton,
