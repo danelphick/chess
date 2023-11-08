@@ -57,24 +57,26 @@ class MainWindow(QMainWindow):
         top_layout = QHBoxLayout()
         self.root.setLayout(top_layout)
 
-        self.eval_bar = QtWidgets.QProgressBar()
-        self.eval_bar.text = lambda: "{0}".format(self.eval_bar.value() / 100.0)
-        self.eval_bar.setStyleSheet(
-        """
-            QProgressBar {
-                background-color: black;
-            }
-            QProgressBar::chunk {
-                background-color: white;
-            }
-        """
-        )
+        # self.eval_bar = QtWidgets.QProgressBar()
+        # self.eval_bar.text = lambda: "{0}".format(self.eval_bar.value() / 100.0)
+        # self.eval_bar.setStyleSheet(
+        # """
+        #     QProgressBar {
+        #         background-color: black;
+        #     }
+        #     QProgressBar::chunk {
+        #         background-color: white;
+        #     }
+        # """
+        # )
+
+        self.eval_bar = EvalBar()
         # palette = self.eval_bar.palette()
         # palette.setColor(palette.Highlight, QtGui.QColorConstants.Green)
         # self.eval_bar.setPalette(palette)
-        self.eval_bar.setOrientation(QtCore.Qt.Vertical)
-        self.eval_bar.setMinimum(-1000)
-        self.eval_bar.setMaximum(1000)
+        # self.eval_bar.setOrientation(QtCore.Qt.Vertical)
+        # self.eval_bar.setMinimum(-1000)
+        # self.eval_bar.setMaximum(1000)
 
         self.board_widget = ChessBoard()
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)

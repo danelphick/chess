@@ -24,13 +24,17 @@ class EvalBar(QLabel):
         self.drawBar()
 
     def updateBar(self, eval):
-        self.eval = eval.white().score() / 100.0
-        self.drawBar()
+        if eval.is_mate():
+            self.eval = 10 if eval.white().mate() > 0 else -10
+            self.drawBar()
+        else:
+            self.eval = eval.white().score() / 100.0
+            self.drawBar()
 
     def drawBar(self):
         canvas = self.pixmap()
 
-        eval = (10.0 + max(-10.0, min(10.0, int(self.eval)))) / 20
+        eval = (10.0 + max(-10.0, min(10.0, self.eval))) / 20
 
         white_height = int(HEIGHT * eval)
         black_height = HEIGHT - white_height

@@ -113,13 +113,12 @@ class Controller:
                 return
 
             with await engine.analysis(board, chess.engine.Limit(depth=25)) as analysis:
-
                 async for info in analysis:
                     score = info.get("score")
                     if score is not None:
                         score = score
-                        mate = score.is_mate()
-                        if mate:
+                        if score.is_mate():
+                            mate = score.white().mate()
                             if mate == 0:
                                 score_text = "Checkmate"
                             elif mate > 0:
@@ -132,9 +131,15 @@ class Controller:
                             )
 
                         depth = info.get("depth")
-                        move = board.variation_san(info.get("pv"))
-                        self.analysis_widget.setText(f"{score_text} depth: {depth} {move}\n")
-                        self.eval_bar.setValue(score.white().score())
+
+                        if board.is_game_over():
+                            self.analysis_widget.setText(board.result(claim_draw=True))
+                        else:
+                            move = board.variation_san(info.get("pv"))
+                            self.analysis_widget.setText(
+                                f"{score_text} depth: {depth} {move}\n"
+                            )
+                        self.eval_bar.updateBar(score)
 
                     # Arbitrary stop condition.
                     if info.get("depth", 0) > 30:
@@ -147,8 +152,13 @@ class Controller:
     def scheduleTask(self, coro):
         task = asyncio.create_task(coro)
         self.backgroundTasks.add(task)
-        task.add_done_callback(self.backgroundTasks.discard)
+        task.add_done_callback(self.taskDone)
         return task
+
+    def taskDone(self, task):
+        if task.exception():
+            raise task.exception()
+        self.backgroundTasks.discard(task)
 
     def updateMoveListPosition(self):
         new = self.game.getTurnAndNumber()
