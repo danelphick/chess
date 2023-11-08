@@ -1,8 +1,6 @@
 import aiosqlite
 import asyncio
 
-from tabulate import tabulate
-
 import chess
 import chess.pgn
 
@@ -17,18 +15,23 @@ class ChessDatabase:
     cache: dict[str, list[str]]
     file: str
     con: asyncio.Future
+    table_prefix: str
 
-    def __init__(self, database_file):
+    def __init__(self, database_file, table_prefix, extra_fields):
         self.cache = {}
         self.file = database_file
         self.con = None
+        self.table_prefix = table_prefix
+        self.extra_fields_sql = ",\n".join(extra_fields)
 
     async def conn(self):
         if self.con is None:
             self.con = asyncio.ensure_future(aiosqlite.connect(self.file))
         return await self.con
 
-    async def findMultipleEpds(cur, epds: list[str], user: str, color: chess.Color):
+    async def findMultipleEpds(
+        self, cur, epds: list[str], user: str, color: chess.Color
+    ):
         await cur.executescript(
             """
             CREATE TEMPORARY TABLE IF NOT EXISTS temp_positions (epd STRING);
@@ -44,15 +47,13 @@ class ChessDatabase:
         await cur.execute(
             f"""
             SELECT p.epd,
-                SUM(result = '1-0'),
-                SUM(result = '1/2-1/2'),
-                SUM(result = '0-1'),
-                next_move, COUNT(1) AS count
+                next_move, COUNT(1) AS count,
+                {self.extra_fields_sql}
             FROM positions p
-            JOIN game_positions g
+            JOIN {self.table_prefix}_positions g
             ON p.pos_id = g.pos_id
-            JOIN games
-            ON games.game_id = g.game_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
             JOIN temp_positions
             ON p.epd = temp_positions.epd
             WHERE {'white' if color == chess.WHITE else 'black'} = ?
@@ -62,19 +63,17 @@ class ChessDatabase:
             (user,),
         )
 
-    async def findSingleEpd(cur, epd: str, user: str, color: chess.Color):
+    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
         await cur.execute(
             f"""
             SELECT p.epd,
-                SUM(result = '1-0'),
-                SUM(result = '1/2-1/2'),
-                SUM(result = '0-1'),
-                next_move, COUNT(1) AS count
+                next_move, COUNT(1) AS count,
+                {self.extra_fields_sql}
             FROM positions p
-            JOIN game_positions g
+            JOIN {self.table_prefix}_positions g
             ON p.pos_id = g.pos_id
-            JOIN games
-            ON games.game_id = g.game_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
             WHERE {'white' if color == chess.WHITE else 'black'} = ?
             AND p.epd = ?
             GROUP BY next_move
@@ -92,18 +91,18 @@ class ChessDatabase:
 
         async with con.cursor() as cur:
             if len(epds) > 1:
-                await ChessDatabase.findMultipleEpds(cur, epds, user, color)
+                await self.findMultipleEpds(cur, epds, user, color)
             else:
-                await ChessDatabase.findSingleEpd(cur, epds[0], user, color)
+                await self.findSingleEpd(cur, epds[0], user, color)
 
             results = {}
-            async for (epd, win, draw, loss, next_move, count) in cur:
-                row = (win, draw, loss, next_move, count)
+            async for (epd, next_move, count, win, draw, loss) in cur:
+                row = (next_move, count, win, draw, loss, win, draw, loss)
                 if epd not in results:
                     results[epd] = set()
                 results[epd].add(row)
 
-            for (epd, row) in results.items():
+            for epd, row in results.items():
                 self.cache[epd] = row
 
         for epd in epds:
@@ -128,3 +127,23 @@ class ChessDatabase:
     async def close(self):
         if self.con is not None:
             await (await self.conn()).close()
+
+
+class GameDatabase(ChessDatabase):
+    def __init__(self, database_file):
+        super(GameDatabase, self).__init__(
+            database_file=database_file,
+            table_prefix="game",
+            extra_fields=(
+                "SUM(result = '1-0')",
+                "SUM(result = '1/2-1/2')",
+                "SUM(result = '0-1')",
+            ),
+        )
+
+
+class OpeningDatabase(ChessDatabase):
+    def __init__(self, database_file):
+        super(OpeningDatabase, self).__init__(
+            database_file=database_file, table_prefix="opening"
+        )

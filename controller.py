@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QLabel, QPushButton
 import chess
 from config import config
 from chess_board import ChessBoard
-from database import ChessDatabase
+from database import GameDatabase
 from database_pane import DatabasePane
 from eval_bar import EvalBar
 from game import Game
@@ -18,7 +18,7 @@ class Controller:
     game: Game
     chess_board: ChessBoard
     move_list: MoveList
-    database: ChessDatabase
+    database: GameDatabase
     database_pane: DatabasePane
     currentTurnAndNumber: tuple[chess.Color, int]
     engine: chess.engine.SimpleEngine
@@ -53,7 +53,7 @@ class Controller:
         self.engine = None
         self.examineTasks = []
 
-        self.database = ChessDatabase(database_file="games.db")
+        self.database = GameDatabase(database_file="games.db")
         self.first.clicked.connect(self.firstMove)
         self.previous.clicked.connect(self.previousMove)
         self.next.clicked.connect(self.nextMove)

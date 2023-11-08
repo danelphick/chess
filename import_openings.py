@@ -28,8 +28,53 @@ cur.execute(
             );
 """
 )
+cur.execute(
+    """CREATE TABLE IF NOT EXISTS positions (
+            pos_id INTEGER PRIMARY KEY,
+            epd TEXT UNIQUE
+            );
+"""
+)
+cur.execute(
+    """CREATE TABLE IF NOT EXISTS opening_positions (
+            opening_pos_id INTEGER PRIMARY KEY,
+            pos_id INTEGER,
+            ply INTEGER,
+            opening_id INTEGER,
+            last_opening_pos_id INTEGER,
+            next_move TEXT
+            );
+"""
+)
 con.commit()
 
+def import_line(cur, variation, game, opening_id):
+    ply = 0
+    last_opening_pos_id = None
+    while game is not None:
+        board = game.board()
+        epd = board.epd()
+
+        cur.execute("INSERT OR IGNORE INTO positions (epd) VALUES (?)", (epd,))
+        pos_id = cur.execute(
+            "SELECT pos_id FROM positions WHERE epd = ?", (epd,)
+        ).fetchone()[0]
+
+        next = game.next()
+        next_move = None if next is None else board.san(next.move)
+
+        cur.execute(
+            """
+    INSERT INTO opening_positions (pos_id, ply, opening_id, last_opening_pos_id, next_move)
+    VALUES (?, ?, ?, ?, ?)
+            """,
+            (pos_id, ply, opening_id, last_opening_pos_id, next_move),
+        )
+        last_opening_pos_id = cur.lastrowid
+
+        # print(next_move)
+        ply += 1
+        game = next
 
 # Get list of directories in the openings directory
 main_scanner = os.scandir(openings_dir)
@@ -89,6 +134,8 @@ for book_entry in main_scanner:
                             print(
                                 f"{index}: {variation['book']} {variation['chapter']} {variation['name']} {variation.get('link')}"
                             )
+
+                            import_line(cur, variation, game, lastrowid)
 
 
 # print(f"{' ':80}", end="\r")
