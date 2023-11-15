@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QLabel, QPushButton
 import chess
 from config import config
 from chess_board import ChessBoard
-from database import GameDatabase
+from database import GameDatabase, OpeningDatabase
 from database_pane import DatabasePane
 from eval_bar import EvalBar
 from game import Game
@@ -18,8 +18,10 @@ class Controller:
     game: Game
     chess_board: ChessBoard
     move_list: MoveList
-    database: GameDatabase
-    database_pane: DatabasePane
+    game_database: GameDatabase
+    game_database_pane: DatabasePane
+    opening_database: OpeningDatabase
+    opening_database_pane: DatabasePane
     currentTurnAndNumber: tuple[chess.Color, int]
     engine: chess.engine.SimpleEngine
     backgroundTasks: set[asyncio.Task]
@@ -30,8 +32,8 @@ class Controller:
         chess_board: ChessBoard,
         eval_bar: EvalBar,
         move_list: MoveList,
-        database_pane: DatabasePane,
-        openings_pane: OpeningsPane,
+        game_database_pane: DatabasePane,
+        opening_database_pane: OpeningsPane,
         first: QPushButton,
         previous: QPushButton,
         next: QPushButton,
@@ -42,7 +44,8 @@ class Controller:
         self.chess_board = chess_board
         self.eval_bar = eval_bar
         self.move_list = move_list
-        self.database_pane = database_pane
+        self.game_database_pane = game_database_pane
+        self.opening_database_pane = opening_database_pane
         self.first = first
         self.previous = previous
         self.next = next
@@ -53,7 +56,7 @@ class Controller:
         self.engine = None
         self.examineTasks = []
 
-        self.database = GameDatabase(database_file="games.db")
+        self.game_database = GameDatabase(database_file="games.db")
         self.first.clicked.connect(self.firstMove)
         self.previous.clicked.connect(self.previousMove)
         self.next.clicked.connect(self.nextMove)
@@ -81,9 +84,9 @@ class Controller:
         self.transport, self.engine = await chess.engine.popen_uci("stockfish")
 
     async def lookupPositions(self, positions, username, color):
-        self.database_pane.setMovesLoading()
-        moves = await self.database.lookupPositions(positions, username, color)
-        self.database_pane.setMoves(moves, self)
+        self.game_database_pane.setMovesLoading()
+        moves = await self.game_database.lookupPositions(positions, username, color)
+        self.game_database_pane.setMoves(moves, self)
 
     async def getEngine(self):
         if self.engine:
@@ -295,7 +298,7 @@ class Controller:
 
     async def stop(self):
         self.stopped = True
-        await self.database.close()
+        await self.game_database.close()
 
     def selectMove(self, turn, number):
         self.chess_board.cancelAnimation()
