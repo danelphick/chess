@@ -59,7 +59,7 @@ class ChessDatabase:
             JOIN temp_positions
             ON p.epd = temp_positions.epd
             WHERE {'white' if color == chess.WHITE else 'black'} = ?
-            GROUP BY next_move
+            GROUP BY p.epd, next_move
             ORDER BY p.epd, count DESC
         """,
             (user,),
