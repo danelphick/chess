@@ -17,12 +17,14 @@ class ChessDatabase:
     con: asyncio.Future
     table_prefix: str
 
-    def __init__(self, database_file, table_prefix, extra_fields):
+    def __init__(self, database_file, table_prefix, extra_fields=()):
         self.cache = {}
         self.file = database_file
         self.con = None
         self.table_prefix = table_prefix
-        self.extra_fields_sql = ",\n".join(extra_fields)
+        self.extra_fields_sql = ""
+        if extra_fields:
+            self.extra_fields_sql = "," + ",\n".join(extra_fields)
 
     async def conn(self):
         if self.con is None:
@@ -47,7 +49,7 @@ class ChessDatabase:
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count,
+                next_move, COUNT(1) AS count
                 {self.extra_fields_sql}
             FROM positions p
             JOIN {self.table_prefix}_positions g
@@ -67,7 +69,7 @@ class ChessDatabase:
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count,
+                next_move, COUNT(1) AS count
                 {self.extra_fields_sql}
             FROM positions p
             JOIN {self.table_prefix}_positions g
@@ -96,8 +98,8 @@ class ChessDatabase:
                 await self.findSingleEpd(cur, epds[0], user, color)
 
             results = {}
-            async for (epd, next_move, count, win, draw, loss) in cur:
-                row = (next_move, count, win, draw, loss, win, draw, loss)
+            async for (epd, next_move, count, *extras) in cur:
+                row = (next_move, count, *extras)
                 if epd not in results:
                     results[epd] = set()
                 results[epd].add(row)
@@ -146,4 +148,55 @@ class OpeningDatabase(ChessDatabase):
     def __init__(self, database_file):
         super(OpeningDatabase, self).__init__(
             database_file=database_file, table_prefix="opening"
+        )
+
+
+    async def findMultipleEpds(
+        self, cur, epds: list[str], user: str, color: chess.Color
+    ):
+        await cur.executescript(
+            """
+            CREATE TEMPORARY TABLE IF NOT EXISTS temp_positions (epd STRING);
+            DELETE FROM temp_positions;
+            """
+        )
+        await cur.executemany(
+            """
+            INSERT INTO temp_positions VALUES (?);
+            """,
+            [(epd,) for epd in epds],
+        )
+
+        await cur.execute(
+            f"""
+            SELECT p.epd,
+                next_move, COUNT(1) AS count
+                {self.extra_fields_sql}
+            FROM positions p
+            JOIN {self.table_prefix}_positions g
+            ON p.pos_id = g.pos_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            JOIN temp_positions
+            ON p.epd = temp_positions.epd
+            GROUP BY p.epd, next_move
+            ORDER BY p.epd, count DESC
+            """)
+
+    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
+        await cur.execute(
+            f"""
+            SELECT p.epd,
+                next_move, COUNT(1) AS count
+                {self.extra_fields_sql}
+            FROM positions p
+            JOIN {self.table_prefix}_positions g
+            ON p.pos_id = g.pos_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            WHERE p.epd = ?
+            GROUP BY next_move
+            ORDER BY p.epd, count DESC
+            """,
+            (epd,),
         )

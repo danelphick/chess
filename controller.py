@@ -57,6 +57,7 @@ class Controller:
         self.examineTasks = []
 
         self.game_database = GameDatabase(database_file="games.db")
+        self.opening_database = OpeningDatabase(database_file="openings.db")
         self.first.clicked.connect(self.firstMove)
         self.previous.clicked.connect(self.previousMove)
         self.next.clicked.connect(self.nextMove)
@@ -70,7 +71,7 @@ class Controller:
             positions.append(b.epd())
         asyncio.create_task(
             self.lookupPositions(
-                positions, config()["lichess"]["username"], chess.WHITE
+                positions[:3], config()["lichess"]["username"], chess.WHITE
             )
         )
 
@@ -87,6 +88,10 @@ class Controller:
         self.game_database_pane.setMovesLoading()
         moves = await self.game_database.lookupPositions(positions, username, color)
         self.game_database_pane.setMoves(moves, self)
+
+        self.opening_database_pane.setMovesLoading()
+        moves = await self.opening_database.lookupPositions(positions, username, color)
+        self.opening_database_pane.setMoves(moves, self)
 
     async def getEngine(self):
         if self.engine:
@@ -111,7 +116,8 @@ class Controller:
 
             del self.examineTasks[0:-1]
 
-            # A new task could have been scheduled while we were waiting on cancelling the other tasks
+            # A new task could have been scheduled while we were waiting on cancelling the other
+            # tasks.
             if asyncio.current_task() != self.examineTasks[-1]:
                 return
 
@@ -299,6 +305,7 @@ class Controller:
     async def stop(self):
         self.stopped = True
         await self.game_database.close()
+        await self.opening_database.close()
 
     def selectMove(self, turn, number):
         self.chess_board.cancelAnimation()

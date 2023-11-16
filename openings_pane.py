@@ -145,9 +145,9 @@ class OpeningsPane(QtWidgets.QScrollArea):
 
         if moves:
             for move, row in zip(
-                sorted(moves, key=lambda x: x[4], reverse=True), range(len(moves))
+                sorted(moves, key=lambda x: x[1], reverse=True), range(len(moves))
             ):
-                move_text = move[3]
+                move_text = move[0]
                 if move_text is None:
                     continue
                 callback = lambda move_text=move_text: controller.moveFromSan(move_text)
@@ -155,14 +155,14 @@ class OpeningsPane(QtWidgets.QScrollArea):
                 move_label = TableLabel(callback, move_text, QtCore.Qt.AlignLeft)
                 self.move_grid.addWidget(move_label, row, 0)
 
-                total_moves = move[4]
+                total_moves = move[1]
                 total_label = TableLabel(
                     callback, str(total_moves), QtCore.Qt.AlignRight
                 )
                 self.move_grid.addWidget(total_label, row, 1)
 
                 self.move_grid.addWidget(
-                    WinDrawLossWidget(callback, move[0], move[1], move[2], total_moves),
+                    WinDrawLossWidget(callback, 0, total_moves, 0, total_moves),
                     row,
                     2,
                 )

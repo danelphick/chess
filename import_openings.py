@@ -14,8 +14,8 @@ openings_dir = "/Users/dan/github/scraper/books/"
 con = sqlite3.connect("/Users/dan/github/chess/openings.db")
 cur = con.cursor()
 cur.execute(
-    """CREATE TABLE IF NOT EXISTS raw_openings (
-            id INTEGER PRIMARY KEY,
+    """CREATE TABLE IF NOT EXISTS openings (
+            opening_id INTEGER PRIMARY KEY,
             name TEXT,
             variation TEXT,
             link TEXT,
@@ -106,7 +106,7 @@ for book_entry in main_scanner:
 
                         # Insert each variation into the database
                         cur.execute(
-                            """INSERT OR IGNORE INTO raw_openings (
+                            """INSERT OR IGNORE INTO openings (
                                  name,
                                  variation,
                                  link,
@@ -117,6 +117,7 @@ for book_entry in main_scanner:
                                  learned)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
+
                                 variation["name"],
                                 variation["variation"],
                                 variation.get("link", ""),
