@@ -4,5 +4,7 @@
     "."
   ],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "prettier.printWidth": 100,
+  "editor.rulers": [100]
 }
