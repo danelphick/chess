@@ -25,6 +25,7 @@ class Controller:
     currentTurnAndNumber: tuple[chess.Color, int]
     engine: chess.engine.SimpleEngine
     backgroundTasks: set[asyncio.Task]
+    userColor: chess.Color
 
     def __init__(
         self,
@@ -38,6 +39,7 @@ class Controller:
         previous: QPushButton,
         next: QPushButton,
         last: QPushButton,
+        rotate: QPushButton,
         analysis_widget: QLabel,
     ):
         self.game = game
@@ -50,6 +52,7 @@ class Controller:
         self.previous = previous
         self.next = next
         self.last = last
+        self.rotate = rotate
         self.analysis_widget = analysis_widget
         self.currentTurnAndNumber = (chess.WHITE, 0)
         self.backgroundTasks = set()
@@ -62,6 +65,7 @@ class Controller:
         self.previous.clicked.connect(self.previousMove)
         self.next.clicked.connect(self.nextMove)
         self.last.clicked.connect(self.lastMove)
+        self.rotate.clicked.connect(self.rotateBoard)
 
         self.move_list.setMoves(self, game.getMoves())
         b = game.board.copy()
@@ -71,7 +75,7 @@ class Controller:
             positions.append(b.epd())
         asyncio.create_task(
             self.lookupPositions(
-                positions[:3], config()["lichess"]["username"], chess.WHITE
+                positions, config()["lichess"]["username"], chess.WHITE
             )
         )
 
@@ -80,6 +84,7 @@ class Controller:
         self.updateMoveListPosition()
         self.chess_board.setupBoard(game.board)
         self.chess_board.moveHandler = self
+        self.userColor = chess.WHITE
 
     async def startEngine(self):
         self.transport, self.engine = await chess.engine.popen_uci("stockfish")
@@ -318,3 +323,7 @@ class Controller:
         self.chess_board.setupBoard(self.game.board)
         self.updateMoveListPosition()
         self.updateBoard()
+
+    def rotateBoard(self):
+        self.userColor = chess.WHITE if self.userColor == chess.BLACK else chess.BLACK
+        self.chess_board.rotate(self.userColor)

@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
         self.previous = QPushButton("<")
         self.next = QPushButton(">")
         self.last = QPushButton(">|")
+        self.rotate = QPushButton("Rotate Board")
 
         tabView = QtWidgets.QTabWidget()
         right_panel_layout = QVBoxLayout()
@@ -111,6 +112,7 @@ class MainWindow(QMainWindow):
         navigation_layout.addWidget(self.last)
 
         right_panel_layout.addLayout(navigation_layout)
+        right_panel_layout.addWidget(self.rotate)
         self.setCentralWidget(self.root)
 
         QtGui.QShortcut(QtGui.QKeySequence.MoveToNextChar, self.next, self.next.click)
@@ -173,6 +175,7 @@ def setupGame(pgn_text):
         window.previous,
         window.next,
         window.last,
+        window.rotate,
         window.analysis_widget,
     )
 
