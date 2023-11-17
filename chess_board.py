@@ -386,7 +386,6 @@ class ChessBoard(QLabel):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         for y in range(0, 8):
             for x in range(0, 8):
-                # This draws the board upside down hence 7-y
                 if self.colorPerspective == chess.WHITE:
                     square = chess.square(x, 7 - y)
                 else:
@@ -447,9 +446,8 @@ class ChessBoard(QLabel):
                         gradient,
                     )
 
-                # The lookup loops over the list which could be avoided if we
-                # drew the squares in the right order and maintained our
-                # position in this list.
+                # The lookup loops over the list which could be avoided if we drew the squares in
+                # the right order and maintained our position in this list.
                 if square in self.validSquares:
                     radius = VALID_MOVE_CIRCLE_RADIUS
                     if square in self.positions:
