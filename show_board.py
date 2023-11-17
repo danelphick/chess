@@ -31,6 +31,7 @@ controller = None
 
 # logging.basicConfig(level=logging.DEBUG)
 
+
 class MainWindow(QMainWindow):
     board_widget: ChessBoard
     eval_board: EvalBar
@@ -56,28 +57,7 @@ class MainWindow(QMainWindow):
         self.root = QWidget()
         top_layout = QHBoxLayout()
         self.root.setLayout(top_layout)
-
-        # self.eval_bar = QtWidgets.QProgressBar()
-        # self.eval_bar.text = lambda: "{0}".format(self.eval_bar.value() / 100.0)
-        # self.eval_bar.setStyleSheet(
-        # """
-        #     QProgressBar {
-        #         background-color: black;
-        #     }
-        #     QProgressBar::chunk {
-        #         background-color: white;
-        #     }
-        # """
-        # )
-
         self.eval_bar = EvalBar()
-        # palette = self.eval_bar.palette()
-        # palette.setColor(palette.Highlight, QtGui.QColorConstants.Green)
-        # self.eval_bar.setPalette(palette)
-        # self.eval_bar.setOrientation(QtCore.Qt.Vertical)
-        # self.eval_bar.setMinimum(-1000)
-        # self.eval_bar.setMaximum(1000)
-
         self.board_widget = ChessBoard()
         self.board_widget.setAlignment(QtCore.Qt.AlignTop)
         board_and_analysis_layout = QVBoxLayout()
@@ -86,10 +66,22 @@ class MainWindow(QMainWindow):
         eval_and_board_layout.addWidget(self.board_widget)
         board_and_analysis_layout.addLayout(eval_and_board_layout)
         self.analysis_widget = QLabel()
-        self.analysis_widget.setFixedWidth(self.board_widget.width())
-        self.analysis_widget.setMinimumHeight(50)
+
         self.analysis_widget.setWordWrap(True)
+        self.analysis_widget.setStyleSheet("padding: 4px; background: black")
         self.analysis_widget.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+
+        analysis_height = (
+            self.analysis_widget.fontMetrics()
+            .boundingRect(
+                QtCore.QRect(0, 0, 100, 100),
+                QtCore.Qt.TextFlag.TextWordWrap,
+                "foo\nfoo\nfoo",
+            )
+            .height()
+            + 4 * 2 * 2  # for padding
+        )
+        self.analysis_widget.setFixedHeight(analysis_height)
         board_and_analysis_layout.addWidget(self.analysis_widget)
         top_layout.addLayout(board_and_analysis_layout)
 
@@ -155,11 +147,13 @@ Na3 28. c4 h6 29. Ke3 Kf7 30. Ke4 Ke6 31. h3 Rf7 32. h4 Rd7 33. h5 Rd4+ 34. Ke3
 Nb1 35. c5 Kd5 36. c6 Kc5
 """
 
+
 def openFile():
     pgn_file, _ = QtWidgets.QFileDialog.getOpenFileName(filter="*.pgn")
     if pgn_file:
         pgn_text = pathlib.Path(pgn_file).read_text()
         setupGame(pgn_text)
+
 
 window = None
 
@@ -185,6 +179,7 @@ def setupGame(pgn_text):
 
 async def main():
     global window
+
     def close_future(future, loop):
         loop.call_later(10, future.cancel)
         future.cancel()
@@ -210,6 +205,7 @@ async def main():
     except asyncio.CancelledError:
         pass
     return True
+
 
 if __name__ == "__main__":
     try:

@@ -150,7 +150,6 @@ class OpeningDatabase(ChessDatabase):
             database_file=database_file, table_prefix="opening"
         )
 
-
     async def findMultipleEpds(
         self, cur, epds: list[str], user: str, color: chess.Color
     ):
@@ -181,7 +180,8 @@ class OpeningDatabase(ChessDatabase):
             ON p.epd = temp_positions.epd
             GROUP BY p.epd, next_move
             ORDER BY p.epd, count DESC
-            """)
+            """
+        )
 
     async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
         await cur.execute(
