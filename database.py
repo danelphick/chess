@@ -1,3 +1,4 @@
+import abc
 import aiosqlite
 import asyncio
 
@@ -11,7 +12,9 @@ import chess.pgn
 # b) successor moves
 
 
-class ChessDatabase:
+class ChessDatabase(object):
+    __metaclass__ = abc.ABCMeta
+
     cache: dict[str, list[str]]
     file: str
     con: asyncio.Future
@@ -31,9 +34,18 @@ class ChessDatabase:
             self.con = asyncio.ensure_future(aiosqlite.connect(self.file))
         return await self.con
 
+    @abc.abstractmethod
+    async def findMultipleEpdsFromTable(
+        self, cur, user: str, color: chess.Color
+    ):
+        """Method called by findMultipleEpds which should find all the positions using the table
+        temp_positions, which that method sets up."""
+        pass
+
     async def findMultipleEpds(
         self, cur, epds: list[str], user: str, color: chess.Color
     ):
+        """Given a list of EPDs, find all the lines that contain that position."""
         await cur.executescript(
             """
             CREATE TEMPORARY TABLE IF NOT EXISTS temp_positions (epd STRING);
@@ -46,43 +58,12 @@ class ChessDatabase:
             """,
             [(epd,) for epd in epds],
         )
-        await cur.execute(
-            f"""
-            SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
-            FROM positions p
-            JOIN {self.table_prefix}_positions g
-            ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
-            JOIN temp_positions
-            ON p.epd = temp_positions.epd
-            WHERE {'white' if color == chess.WHITE else 'black'} = ?
-            GROUP BY p.epd, next_move
-            ORDER BY p.epd, count DESC
-        """,
-            (user,),
-        )
+        await self.findMultipleEpdsFromTable(cur, user, color)
 
+    @abc.abstractmethod
     async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
-        await cur.execute(
-            f"""
-            SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
-            FROM positions p
-            JOIN {self.table_prefix}_positions g
-            ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
-            WHERE {'white' if color == chess.WHITE else 'black'} = ?
-            AND p.epd = ?
-            GROUP BY next_move
-            ORDER BY p.epd, count DESC
-        """,
-            (user, epd),
-        )
+        """Given a single EPD, find all the lines that contain that position."""
+        pass
 
     async def populateCache(self, epds: list[str], user: str, color: chess.Color):
         future = asyncio.get_event_loop().create_future()
@@ -141,6 +122,47 @@ class GameDatabase(ChessDatabase):
                 "SUM(result = '1/2-1/2')",
                 "SUM(result = '0-1')",
             ),
+        )
+
+    async def findMultipleEpdsFromTable(
+        self, cur, user: str, color: chess.Color
+    ):
+        await cur.execute(
+            f"""
+            SELECT p.epd,
+                next_move, COUNT(1) AS count
+                {self.extra_fields_sql}
+            FROM positions p
+            JOIN {self.table_prefix}_positions g
+            ON p.pos_id = g.pos_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            JOIN temp_positions
+            ON p.epd = temp_positions.epd
+            WHERE {'white' if color == chess.WHITE else 'black'} = ?
+            GROUP BY p.epd, next_move
+            ORDER BY p.epd, count DESC
+        """,
+            (user,),
+        )
+
+    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
+        await cur.execute(
+            f"""
+            SELECT p.epd,
+                next_move, COUNT(1) AS count
+                {self.extra_fields_sql}
+            FROM positions p
+            JOIN {self.table_prefix}_positions g
+            ON p.pos_id = g.pos_id
+            JOIN {self.table_prefix}s
+            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            WHERE {'white' if color == chess.WHITE else 'black'} = ?
+            AND p.epd = ?
+            GROUP BY next_move
+            ORDER BY p.epd, count DESC
+        """,
+            (user, epd),
         )
 
 
