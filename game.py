@@ -153,7 +153,7 @@ class Game:
 
     def getValidMoves(self, square) -> list[Square]:
         return [
-            move.to_square
+            move
             for move in self.board.legal_moves
             if move.from_square == square
         ]

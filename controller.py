@@ -276,7 +276,7 @@ class Controller:
 
         self.updateMoveListPosition()
 
-    def moveUsingMove(self, move: chess.Move, instant=False):
+    def move(self, move: chess.Move, instant=False):
         if self.game.board.is_legal(move):
             old = self.currentTurnAndNumber
             self.game.replaceNextMove(move)
@@ -291,17 +291,13 @@ class Controller:
         else:
             return False
 
-    def move(self, fromPos: chess.Square, toPos: chess.Square, instant=False):
-        assert fromPos is not None
-        return self.moveUsingMove(chess.Move(fromPos, toPos))
-
     def moveFromSan(self, san):
         self.chess_board.cancelAnimation()
         self.chess_board.clearClicks()
 
         return self.moveUsingMove(self.game.board.parse_san(san))
 
-    def getValidMoveSquares(self, fromPos: chess.Square):
+    def getValidMoves(self, fromPos: chess.Square):
         return self.game.getValidMoves(fromPos)
 
     def whoseTurn(self) -> chess.Color:

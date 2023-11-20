@@ -73,7 +73,7 @@ def squarePositionFromRankAndFile(rank: int, file: int, colorPerspective: chess.
         )
     else:
         return QtCore.QPoint(
-            SQUARE_SIZE * (7- file) + LEFT_MARGIN,
+            SQUARE_SIZE * (7 - file) + LEFT_MARGIN,
             rank * SQUARE_SIZE + TOP_MARGIN,
         )
 
@@ -150,7 +150,7 @@ class Piece:
         color: chess.Color,
         rank: int,
         file: int,
-        colorPerspective: chess.Color
+        colorPerspective: chess.Color,
     ):
         self.color = color
         self.rank = rank
@@ -165,7 +165,9 @@ class Piece:
         self.widget.setPixmap(Piece.image_map(newType, self.color))
 
     def rotate(self, colorPerspective):
-        self.widget.move(squarePositionFromRankAndFile(self.rank, self.file, colorPerspective))
+        self.widget.move(
+            squarePositionFromRankAndFile(self.rank, self.file, colorPerspective)
+        )
 
 
 class ChessBoard(QLabel):
@@ -173,7 +175,7 @@ class ChessBoard(QLabel):
     positions: dict[int, Piece]
     firstClickSquare: Optional[int]
     dragPiece: Optional[Piece]
-    validSquares: list[chess.Square]
+    validMoves: list[chess.Move]
     mouseOverSquare: Optional[chess.Square]
 
     def __init__(self):
@@ -186,7 +188,7 @@ class ChessBoard(QLabel):
         self.moveHandler = None
         self.lastMove = None
         self.checkSquare = None
-        self.validSquares = []
+        self.validMoves = []
         self.mouseOverSquare = None
         self.colorPerspective = chess.WHITE
 
@@ -203,18 +205,20 @@ class ChessBoard(QLabel):
     # Methods overridden from DragHandler
     def dragStart(self, pos: QtCore.QPoint) -> None:
         pos = self.mapFromGlobal(pos)
-        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective))
+        square = chess.square(
+            *fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective)
+        )
         self.mouseOverSquare = square
         piece = self.positions[square]
         if self.moveHandler.whoseTurn() == piece.color:
-            self.validSquares = self.moveHandler.getValidMoveSquares(square)
+            self.validMoves = self.moveHandler.getValidMoves(square)
             self.dragPiece = Piece(
                 self,
                 piece.type,
                 piece.color,
                 chess.square_rank(square),
                 chess.square_file(square),
-                self.colorPerspective
+                self.colorPerspective,
             )
             self.dragPiece.widget.move(
                 pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
@@ -230,7 +234,7 @@ class ChessBoard(QLabel):
             piece.widget.setGraphicsEffect(effect)
         else:
             if self.firstClickSquare is not None:
-                self.moveHandler.move(self.firstClickSquare, square)
+                self.makeMove(self.firstClickSquare, square)
 
     def dragMove(self, pos: QtCore.QPoint) -> None:
         if self.dragPiece is None:
@@ -241,10 +245,12 @@ class ChessBoard(QLabel):
             pos.x() - HALF_SQUARE_SIZE, pos.y() - HALF_SQUARE_SIZE
         )
 
-        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective))
+        square = chess.square(
+            *fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective)
+        )
         if square == self.mouseOverSquare:
             return
-        if square not in self.validSquares:
+        if not any(square == move.to_square for move in self.validMoves):
             if self.mouseOverSquare is None:
                 return
             self.mouseOverSquare = None
@@ -259,8 +265,11 @@ class ChessBoard(QLabel):
         piece_widget = self.positions[self.firstClickSquare].widget
         piece_widget.setGraphicsEffect(None)
         pos = self.mapFromGlobal(pos)
-        square = chess.square(*fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective))
-        self.moveHandler.move(self.firstClickSquare, square, instant=True)
+        square = chess.square(
+            *fileAndRankFromCoords(pos.x(), pos.y(), self.colorPerspective)
+        )
+        if square != self.firstClickSquare:
+            self.makeMove(self.firstClickSquare, square, instant=True)
 
         self.dragPiece.widget.setParent(None)
         self.dragPiece = None
@@ -357,7 +366,7 @@ class ChessBoard(QLabel):
         the board.
         """
         self.firstClickSquare = None
-        self.validSquares = []
+        self.validMoves = []
 
     def mousePressEvent(self, ev: QtGui.QMouseEvent) -> None:
         if self.firstClickSquare is None:
@@ -365,7 +374,7 @@ class ChessBoard(QLabel):
 
         rank, file = rankAndFileFromCoords(ev.x(), ev.y(), self.colorPerspective)
 
-        if not self.moveHandler.move(self.firstClickSquare, chess.square(file, rank)):
+        if not self.makeMove(self.firstClickSquare, chess.square(file, rank)):
             self.clearClicks()
             self.drawBoard()
 
@@ -389,7 +398,7 @@ class ChessBoard(QLabel):
                 if self.colorPerspective == chess.WHITE:
                     square = chess.square(x, 7 - y)
                 else:
-                    square = chess.square(7- x, y)
+                    square = chess.square(7 - x, y)
                 if square == self.mouseOverSquare and self.firstClickSquare is not None:
                     color = (
                         ChessBoard.SELECTED_DARK_SQUARE
@@ -448,7 +457,7 @@ class ChessBoard(QLabel):
 
                 # The lookup loops over the list which could be avoided if we drew the squares in
                 # the right order and maintained our position in this list.
-                if square in self.validSquares:
+                if any(square == move.to_square for move in self.validMoves):
                     radius = VALID_MOVE_CIRCLE_RADIUS
                     if square in self.positions:
                         radius = VALID_CAPTURE_CIRCLE_RADIUS
@@ -503,3 +512,46 @@ class ChessBoard(QLabel):
             for piece in self.positions.values():
                 piece.rotate(colorPerspective)
 
+    class PromotionWindow(QWidget):
+        def __init__(
+            self, whoseTurn: chess.Color, chess_board, move: chess.Move
+        ) -> None:
+            super().__init__()
+            layout = QtWidgets.QVBoxLayout()
+            self.label = QLabel("Choose promotion piece")
+            layout.addWidget(self.label)
+            piece_layout = QtWidgets.QHBoxLayout()
+            for type in [
+                chess.QUEEN,
+                chess.ROOK,
+                chess.BISHOP,
+                chess.KNIGHT,
+            ]:
+                piece_button = QtWidgets.QPushButton(
+                    icon=Piece.image_map(type, whoseTurn)
+                )
+                piece_layout.addWidget(piece_button)
+                move = chess.Move(move.from_square, move.to_square, promotion=type)
+                piece_button.clicked.connect(
+                    lambda type=type, move=move: chess_board.promote(move, type)
+                )
+            layout.addLayout(piece_layout)
+            self.setLayout(layout)
+
+    def promote(self, move, promotion_type):
+        self.moveHandler.move(chess.Move(move.from_square, move.to_square, promotion_type))
+        self.promotion_window.hide()
+
+    def makeMove(self, fromSquare, toSquare, instant=True):
+        for move in self.validMoves:
+            if move.from_square == fromSquare and move.to_square == toSquare:
+                if move.promotion is None:
+                    return self.moveHandler.move(move, instant=instant)
+                else:
+                    # Need to select a promotion square first
+                    self.promotion_window = ChessBoard.PromotionWindow(
+                        self.moveHandler.whoseTurn(), self, move
+                    )
+                    self.promotion_window.show()
+
+        return False
