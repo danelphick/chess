@@ -295,7 +295,7 @@ class Controller:
         self.chess_board.cancelAnimation()
         self.chess_board.clearClicks()
 
-        return self.moveUsingMove(self.game.board.parse_san(san))
+        return self.move(self.game.board.parse_san(san))
 
     def getValidMoves(self, fromPos: chess.Square):
         return self.game.getValidMoves(fromPos)
