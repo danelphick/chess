@@ -24,6 +24,7 @@ cur.execute(
             chapter TEXT,
             paused INTEGER,
             learned INTEGER,
+            for_white INTEGER,
             UNIQUE(name, book, chapter, link)
             );
 """
@@ -99,6 +100,10 @@ for book_entry in main_scanner:
                             continue
                         line = variation["variation"]
                         game = chess.pgn.read_game(io.StringIO(line))
+                        # if the last move in the PGN is a white move, then at the end of the
+                        # main-line, it will be black to play. Opening variations always end with a
+                        # move from the color they were designed for.
+                        for_white = game.end().turn() == chess.BLACK
                         if game.errors:
                             print(game.errors)
                         if game.is_end():
@@ -114,8 +119,9 @@ for book_entry in main_scanner:
                                  book,
                                  chapter,
                                  paused,
-                                 learned)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                                 learned,
+                                 for_white)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (
 
                                 variation["name"],
@@ -126,6 +132,7 @@ for book_entry in main_scanner:
                                 variation["chapter"],
                                 variation["paused"],
                                 variation["learned"],
+                                for_white,
                             ),
                         )
 
@@ -133,7 +140,7 @@ for book_entry in main_scanner:
                             lastrowid = cur.lastrowid
                             index = index + 1
                             print(
-                                f"{index}: {variation['book']} {variation['chapter']} {variation['name']} {variation.get('link')}"
+                                f"{index}: {variation['book']} {variation['chapter']} {variation['name']} {variation.get('link')} for {'white' if for_white else 'black'}"
                             )
 
                             import_line(cur, variation, game, lastrowid)
