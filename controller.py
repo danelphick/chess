@@ -58,6 +58,7 @@ class Controller:
         self.backgroundTasks = set()
         self.engine = None
         self.examineTasks = []
+        self.userColor = chess.WHITE
 
         self.game_database = GameDatabase(database_file="games.db")
         self.opening_database = OpeningDatabase(database_file="openings.db")
@@ -73,27 +74,27 @@ class Controller:
         for m in game.getMoves():
             b.push_uci(m.uci())
             positions.append(b.epd())
-        asyncio.create_task(
-            self.lookupPositions(
-                positions, config()["lichess"]["username"], chess.WHITE
-            )
-        )
+
+        self.scheduleLookupPositions(positions=positions)
 
         asyncio.create_task(self.startEngine())
 
         self.updateMoveListPosition()
         self.chess_board.setupBoard(game.board)
         self.chess_board.moveHandler = self
-        self.userColor = chess.WHITE
 
     async def startEngine(self):
         self.transport, self.engine = await chess.engine.popen_uci("stockfish")
 
-    async def lookupPositions(self, positions, username, color):
+    async def lookupGamePositions(self, positions, username, color):
         self.game_database_pane.setMovesLoading()
         moves = await self.game_database.lookupPositions(positions, username, color)
-        self.game_database_pane.setMoves(moves, self)
+        filtered_moves = [
+            move for move in moves if move[2] == (self.userColor == chess.WHITE)
+        ]
+        self.game_database_pane.setMoves(filtered_moves, self)
 
+    async def lookupOpeningPositions(self, positions, username, color):
         self.opening_database_pane.setMovesLoading()
         moves = await self.opening_database.lookupPositions(positions, username, color)
         self.opening_database_pane.setMoves(moves, self)
@@ -174,16 +175,26 @@ class Controller:
             raise task.exception()
         self.backgroundTasks.discard(task)
 
+    def scheduleLookupPositions(self, positions=None):
+        if positions is None:
+            positions = [self.game.board.epd()]
+        self.scheduleTask(
+            self.lookupGamePositions(
+                positions, config()["lichess"]["username"], self.userColor
+            )
+        )
+        self.scheduleTask(
+            self.lookupOpeningPositions(
+                positions, config()["lichess"]["username"], self.userColor
+            )
+        )
+
     def updateMoveListPosition(self):
         new = self.game.getTurnAndNumber()
         self.move_list.setCurrentMove(new, self.currentTurnAndNumber)
         self.currentTurnAndNumber = new
 
-        self.scheduleTask(
-            self.lookupPositions(
-                [self.game.board.epd()], config()["lichess"]["username"], chess.WHITE
-            )
-        )
+        self.scheduleLookupPositions()
         self.examineTasks.append(
             self.scheduleTask(self.examinePosition(self.game.board.copy()))
         )
@@ -323,3 +334,4 @@ class Controller:
     def rotateBoard(self):
         self.userColor = chess.WHITE if self.userColor == chess.BLACK else chess.BLACK
         self.chess_board.rotate(self.userColor)
+        self.scheduleLookupPositions()

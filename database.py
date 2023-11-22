@@ -18,16 +18,11 @@ class ChessDatabase(object):
     cache: dict[str, list[str]]
     file: str
     con: asyncio.Future
-    table_prefix: str
 
-    def __init__(self, database_file, table_prefix, extra_fields=()):
+    def __init__(self, database_file=()):
         self.cache = {}
         self.file = database_file
         self.con = None
-        self.table_prefix = table_prefix
-        self.extra_fields_sql = ""
-        if extra_fields:
-            self.extra_fields_sql = "," + ",\n".join(extra_fields)
 
     async def conn(self):
         if self.con is None:
@@ -35,9 +30,7 @@ class ChessDatabase(object):
         return await self.con
 
     @abc.abstractmethod
-    async def findMultipleEpdsFromTable(
-        self, cur, user: str, color: chess.Color
-    ):
+    async def findMultipleEpdsFromTable(self, cur, user: str, color: chess.Color):
         """Method called by findMultipleEpds which should find all the positions using the table
         temp_positions, which that method sets up."""
         pass
@@ -68,7 +61,7 @@ class ChessDatabase(object):
     async def populateCache(self, epds: list[str], user: str, color: chess.Color):
         future = asyncio.get_event_loop().create_future()
         for epd in epds:
-            self.cache[epd] = future
+            self.cache[(color, epd)] = future
 
         con = await self.conn()
 
@@ -79,33 +72,40 @@ class ChessDatabase(object):
                 await self.findSingleEpd(cur, epds[0], user, color)
 
             results = {}
-            async for (epd, next_move, count, *extras) in cur:
-                row = (next_move, count, *extras)
-                if epd not in results:
-                    results[epd] = set()
-                results[epd].add(row)
+            async for (epd, next_move, count, user_plays_white, *extras) in cur:
+                row = (next_move, count, user_plays_white, *extras)
+                color_epd = (user_plays_white, epd)
+                if color_epd not in results:
+                    results[color_epd] = set()
+                results[color_epd].add(row)
 
-            for epd, row in results.items():
-                self.cache[epd] = row
+            for color_epd, row in results.items():
+                self.cache[color_epd] = row
 
         for epd in epds:
-            if self.cache[epd] == future:
-                self.cache[epd] = []
+            if self.cache[(color, epd)] == future:
+                self.cache[(color, epd)] = []
 
         future.set_result(True)
 
     async def lookupPositions(self, epds: list[str], user: str, color: chess.Color):
-        unknown_epds = [epd for epd in epds if epd not in self.cache]
-        if unknown_epds:
-            await self.populateCache(unknown_epds, user, color)
+        unknown_epds = [
+            epd for epd in epds if type(self.cache.get((color, epd))) is not tuple
+        ]
+        really_unknown_epds = [
+            epd for epd in unknown_epds if self.cache.get((color, epd)) is None
+        ]
+
+        if really_unknown_epds:
+            await self.populateCache(really_unknown_epds, user, color)
         future_epds = [
-            self.cache[epd]
+            self.cache[(color, epd)]
             for epd in epds
-            if epd in self.cache and isinstance(self.cache[epd], asyncio.Future)
+            if (color, epd) in self.cache
+            and isinstance(self.cache[(color, epd)], asyncio.Future)
         ]
         await asyncio.gather(*future_epds)
-
-        return self.cache[epds[0]]
+        return self.cache[(color, epds[0])]
 
     async def close(self):
         if self.con is not None:
@@ -116,32 +116,26 @@ class GameDatabase(ChessDatabase):
     def __init__(self, database_file):
         super(GameDatabase, self).__init__(
             database_file=database_file,
-            table_prefix="game",
-            extra_fields=(
-                "SUM(result = '1-0')",
-                "SUM(result = '1/2-1/2')",
-                "SUM(result = '0-1')",
-            ),
         )
 
-    async def findMultipleEpdsFromTable(
-        self, cur, user: str, color: chess.Color
-    ):
+    async def findMultipleEpdsFromTable(self, cur, user: str, color: chess.Color):
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
+                next_move, COUNT(1) AS count,
+                white = ?  AS user_plays_white,
+                SUM(result = '1-0') AS win,
+                SUM(result = '1/2-1/2') AS draw,
+                SUM(result = '0-1') AS loss
             FROM positions p
-            JOIN {self.table_prefix}_positions g
+            JOIN game_positions g
             ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            JOIN games
+            ON games.game_id = g.game_id
             JOIN temp_positions
             ON p.epd = temp_positions.epd
-            WHERE {'white' if color == chess.WHITE else 'black'} = ?
-            GROUP BY p.epd, next_move
-            ORDER BY p.epd, count DESC
+            GROUP BY p.epd, next_move, user_plays_white
+            ORDER BY count DESC
         """,
             (user,),
         )
@@ -150,17 +144,19 @@ class GameDatabase(ChessDatabase):
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
+                next_move, COUNT(1) AS count,
+                white = ? AS user_plays_white,
+                SUM(result = '1-0') AS win,
+                SUM(result = '1/2-1/2') AS draw,
+                SUM(result = '0-1') AS loss
             FROM positions p
-            JOIN {self.table_prefix}_positions g
+            JOIN game_positions g
             ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
-            WHERE {'white' if color == chess.WHITE else 'black'} = ?
+            JOIN games
+            ON games.game_id = g.game_id
             AND p.epd = ?
-            GROUP BY next_move
-            ORDER BY p.epd, count DESC
+            GROUP BY next_move, user_plays_white
+            ORDER BY count DESC
         """,
             (user, epd),
         )
@@ -168,9 +164,7 @@ class GameDatabase(ChessDatabase):
 
 class OpeningDatabase(ChessDatabase):
     def __init__(self, database_file):
-        super(OpeningDatabase, self).__init__(
-            database_file=database_file, table_prefix="opening"
-        )
+        super(OpeningDatabase, self).__init__(database_file=database_file)
 
     async def findMultipleEpds(
         self, cur, epds: list[str], user: str, color: chess.Color
@@ -191,13 +185,12 @@ class OpeningDatabase(ChessDatabase):
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
+                next_move, COUNT(1) AS count, openings.for_white AS user_plays_white
             FROM positions p
-            JOIN {self.table_prefix}_positions g
+            JOIN opening_positions g
             ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
+            JOIN openings
+            ON openings.opening_id = g.opening_id
             JOIN temp_positions
             ON p.epd = temp_positions.epd
             GROUP BY p.epd, next_move
@@ -209,16 +202,17 @@ class OpeningDatabase(ChessDatabase):
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count
-                {self.extra_fields_sql}
+                next_move, COUNT(1) AS count, o.for_white AS user_plays_white
             FROM positions p
-            JOIN {self.table_prefix}_positions g
+            JOIN opening_positions g
             ON p.pos_id = g.pos_id
-            JOIN {self.table_prefix}s
-            ON {self.table_prefix}s.{self.table_prefix}_id = g.{self.table_prefix}_id
-            WHERE p.epd = ?
+            JOIN openings
+            ON openings.opening_id = g.opening_id
+            JOIN openings o
+            ON o.opening_id = g.opening_id
+            WHERE p.epd = ? AND o.for_white = ?
             GROUP BY next_move
             ORDER BY p.epd, count DESC
             """,
-            (epd,),
+            (epd, int(color == chess.WHITE)),
         )

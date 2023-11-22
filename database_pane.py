@@ -145,7 +145,7 @@ class DatabasePane(QtWidgets.QScrollArea):
 
         if moves:
             for move, row in zip(
-                sorted(moves, key=lambda x: x[4], reverse=True), range(len(moves))
+                sorted(moves, key=lambda move: move[1], reverse=True), range(len(moves))
             ):
                 move_text = move[0]
                 if move_text is None:
@@ -156,13 +156,15 @@ class DatabasePane(QtWidgets.QScrollArea):
                 self.move_grid.addWidget(move_label, row, 0)
 
                 total_moves = move[1]
+                for_white = move[2]
+                (win, draw, loss) = move[3:6]
                 total_label = TableLabel(
                     callback, str(total_moves), QtCore.Qt.AlignRight
                 )
                 self.move_grid.addWidget(total_label, row, 1)
 
                 self.move_grid.addWidget(
-                    WinDrawLossWidget(callback, move[2], move[3], move[4], total_moves),
+                    WinDrawLossWidget(callback, win, draw, loss, total_moves),
                     row,
                     2,
                 )
