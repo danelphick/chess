@@ -3,6 +3,15 @@ from PySide6 import QtWidgets, QtCore
 
 import chess
 
+MOVE_NUMBER_COLUMN = 0
+WHITE_MOVE_COLUMN = 1
+WHITE_ASSESSMENT_COLUMN = 2
+BLACK_MOVE_COLUMN = 3
+BLACK_ASSESSMENT_COLUMN = 4
+
+NUM_COLUMNS = 5
+
+BOOK_ASSESSMENT_TEXT="📖"
 
 class MoveList(QtWidgets.QScrollArea):
     MOVE_STYLE = """
@@ -26,13 +35,16 @@ class MoveList(QtWidgets.QScrollArea):
     def __init__(self):
         super().__init__()
         self.setMoves(None, [])
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff);
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        (left, _, right, _) = self.move_grid.getContentsMargins()
+        self.setMinimumWidth(250 + left + right)
+
 
     def removeMove(self, row, color):
         if color == chess.BLACK:
-            item = self.move_grid.itemAtPosition(row, 2)
+            item = self.move_grid.itemAtPosition(row, BLACK_MOVE_COLUMN)
         else:
-            item = self.move_grid.itemAtPosition(row, 1)
+            item = self.move_grid.itemAtPosition(row, WHITE_MOVE_COLUMN)
             # if removing the white move then also remove the move number.
             self.move_grid.itemAtPosition(row, 0).widget().setParent(None)
             self.move_grid.setRowMinimumHeight(row, 0)
@@ -58,7 +70,7 @@ class MoveList(QtWidgets.QScrollArea):
         self.widget.setLayout(self.move_grid)
 
         self.move_grid.setSpacing(0)
-        self.move_grid.setColumnStretch(3, 1)
+        self.move_grid.setColumnStretch(BLACK_ASSESSMENT_COLUMN + 1, 1)
         self.move_grid.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
 
         moves = iter(moves)
@@ -66,18 +78,35 @@ class MoveList(QtWidgets.QScrollArea):
         try:
             while True:
                 white_move = next(moves)
+
                 move_number = row + 1
-                white_move_label = self.createClickableLabel(white_move.san(), (chess.WHITE, move_number))
                 number_label = self.createClickableLabel(str(move_number), None)
-                self.move_grid.addWidget(number_label, row, 0)
-                if self.move_grid.itemAtPosition(row, 1):
-                    self.move_grid.itemAtPosition(row, 1).widget().setText(
-                        white_move.san()
-                    )
+                self.move_grid.addWidget(number_label, row, MOVE_NUMBER_COLUMN)
+                if self.move_grid.itemAtPosition(row, WHITE_MOVE_COLUMN):
+                    self.move_grid.itemAtPosition(
+                        row, WHITE_MOVE_COLUMN
+                    ).widget().setText(white_move.san())
+                    self.move_grid.itemAtPosition(
+                        row, WHITE_MOVE_COLUMN
+                    ).widget().setText(white_move.san())
                 else:
-                    self.move_grid.addWidget(white_move_label, row, 1)
-                black_move_label = self.createClickableLabel(next(moves).san(), (chess.BLACK, move_number))
-                self.move_grid.addWidget(black_move_label, row, 2)
+                    white_move_label = self.createClickableLabel(
+                        white_move.san(), (chess.WHITE, move_number)
+                    )
+                    white_book_label = self.createClickableLabel(
+                        BOOK_ASSESSMENT_TEXT, (chess.WHITE, move_number)
+                    )
+                    self.move_grid.addWidget(white_move_label, row, WHITE_MOVE_COLUMN)
+                    self.move_grid.addWidget(white_book_label, row, WHITE_ASSESSMENT_COLUMN)
+                black_move_label = self.createClickableLabel(
+                    next(moves).san(), (chess.BLACK, move_number)
+                )
+                black_book_label = self.createClickableLabel(
+                    BOOK_ASSESSMENT_TEXT, (chess.BLACK, move_number)
+                )
+
+                self.move_grid.addWidget(black_move_label, row, BLACK_MOVE_COLUMN)
+                self.move_grid.addWidget(black_book_label, row, BLACK_ASSESSMENT_COLUMN)
                 black_move_label.setStyleSheet(MoveList.MOVE_STYLE)
                 row = move_number
         except StopIteration:
@@ -92,11 +121,13 @@ class MoveList(QtWidgets.QScrollArea):
                 self.ensureVisible(0, 0)
         else:
             turn, number = turnAndNumber
-            item = self.move_grid.itemAtPosition(number - 1, 2 - int(turn))
+            item = self.move_grid.itemAtPosition(number - 1, 3 - 2 * int(turn))
             if item is not None:
                 item.widget().setStyleSheet(style)
                 if ensureVisible:
-                    QtCore.QTimer.singleShot(0, lambda: self.ensureWidgetVisible(item.widget()))
+                    QtCore.QTimer.singleShot(
+                        0, lambda: self.ensureWidgetVisible(item.widget())
+                    )
 
     def setCurrentMove(self, new, old):
         if old != new:
@@ -110,10 +141,10 @@ class MoveList(QtWidgets.QScrollArea):
         move_label = self.createClickableLabel(move, turnAndNumber)
         if turn == chess.WHITE:
             number_label = self.createClickableLabel(str(number), turnAndNumber)
-            self.move_grid.addWidget(number_label, row, 0)
-            self.move_grid.addWidget(move_label, row, 1)
+            self.move_grid.addWidget(number_label, row, MOVE_NUMBER_COLUMN)
+            self.move_grid.addWidget(move_label, row, WHITE_MOVE_COLUMN)
         else:
-            self.move_grid.addWidget(move_label, row, 2)
+            self.move_grid.addWidget(move_label, row, BLACK_MOVE_COLUMN)
 
     def removeMoves(self, turnAndNumber):
         turn, number = turnAndNumber
@@ -126,7 +157,7 @@ class MoveList(QtWidgets.QScrollArea):
             row = row + 1
 
         for t in range(row, self.move_grid.rowCount()):
-            for i in range(0, 3):
+            for i in range(0, NUM_COLUMNS):
                 item = self.move_grid.itemAtPosition(t, i)
                 if item is not None:
                     item.widget().setParent(None)

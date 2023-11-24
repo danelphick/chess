@@ -5,7 +5,7 @@ import pathlib
 import sys
 
 import qasync
-from qasync import asyncSlot, asyncClose, QApplication
+from qasync import asyncClose, QApplication
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
