@@ -171,7 +171,7 @@ f1=N+ 23. Rhxf1 exf1=N+ 24. Rxf1 Bxf1 25. Qe1+ Ne7 26. Qxf1
 Nbc6 27. d5 Rf7 28. Qc4 Ne5 29. Qxc7 Nf3+ 30. Kg2 Rc8 31. Qa5
 Rxc2+ 32. Kf1 Nxg5+ 33. Ke1 Nf3+ 34. Kd1 Rd2+ 35. Kc1 Nxd5
 36. a3 Rc7+ 37.Kb1 Nc3+ 38.bxc3 Re7 0-1
-"""
+        """
 
 def openFile():
     pgn_file, _ = QtWidgets.QFileDialog.getOpenFileName(filter="*.pgn")

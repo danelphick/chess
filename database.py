@@ -82,13 +82,13 @@ class ChessDatabase(object):
 
         for epd in epds:
             if self.cache[(color, epd)] == future:
-                self.cache[(color, epd)] = []
+                self.cache[(color, epd)] = set()
 
         future.set_result(True)
 
     async def lookupPositions(self, epds: list[str], color: chess.Color):
         unknown_epds = [
-            epd for epd in epds if type(self.cache.get((color, epd))) is not tuple
+            epd for epd in epds if type(self.cache.get((color, epd))) is not set
         ]
         really_unknown_epds = [
             epd for epd in unknown_epds if self.cache.get((color, epd)) is None
@@ -96,6 +96,7 @@ class ChessDatabase(object):
 
         if really_unknown_epds:
             await self.populateCache(really_unknown_epds, color)
+
         future_epds = [
             self.cache[(color, epd)]
             for epd in epds
@@ -182,17 +183,19 @@ class OpeningDatabase(ChessDatabase):
         await cur.execute(
             f"""
             SELECT p.epd,
-                next_move, COUNT(1) AS count, openings.for_white AS user_plays_white
+                next_move, COUNT(1) AS count, o.for_white AS user_plays_white
             FROM positions p
             JOIN opening_positions g
             ON p.pos_id = g.pos_id
-            JOIN openings
-            ON openings.opening_id = g.opening_id
+            JOIN openings o
+            ON o.opening_id = g.opening_id
             JOIN temp_positions
             ON p.epd = temp_positions.epd
+            WHERE o.for_white = ?
             GROUP BY p.epd, next_move
             ORDER BY p.epd, count DESC
-            """
+            """,
+            (int(color == chess.WHITE),),
         )
 
     async def findSingleEpd(self, cur, epd: str, color: chess.Color):
@@ -203,8 +206,6 @@ class OpeningDatabase(ChessDatabase):
             FROM positions p
             JOIN opening_positions g
             ON p.pos_id = g.pos_id
-            JOIN openings
-            ON openings.opening_id = g.opening_id
             JOIN openings o
             ON o.opening_id = g.opening_id
             WHERE p.epd = ? AND o.for_white = ?

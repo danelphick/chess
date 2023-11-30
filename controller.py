@@ -96,10 +96,25 @@ class Controller:
         ]
         self.game_database_pane.setMoves(filtered_moves, self)
 
-    async def lookupOpeningPositions(self, positions, color, ply):
+    async def lookupOpeningPositions(self, positions, color, ply, *, lookupAllBookMoves=False):
         self.opening_database_pane.setMovesLoading()
-        moves = await self.opening_database.lookupPositions(positions, color)
+        if lookupAllBookMoves:
+            first_position = positions[0]
+            positions = []
+            current_node = self.game.game.root()
+            while next_node := current_node.next():
+                positions.append(current_node.board().epd())
+                current_node = next_node
+            else:
+                positions.append(current_node.board().epd())
+            ply = 0
+            await self.opening_database.lookupPositions(positions, color)
+            moves = await self.opening_database.lookupPositions([first_position], color)
+        else:
+            moves = await self.opening_database.lookupPositions(positions, color)
+
         self.opening_database_pane.setMoves(moves, self)
+
         if ply == 0:
             # Cut off the first position since it's the starting position.
             positions = positions[1:]
@@ -187,7 +202,7 @@ class Controller:
             raise task.exception()
         self.backgroundTasks.discard(task)
 
-    def scheduleLookupPositions(self, positions=None):
+    def scheduleLookupPositions(self, positions=None, *, lookupAllBookMoves=False):
         if positions is None:
             positions = [self.game.board.epd()]
         self.scheduleTask(self.lookupGamePositions(positions, self.userColor))
@@ -196,6 +211,7 @@ class Controller:
                 positions,
                 self.userColor,
                 self.game.ply,
+                lookupAllBookMoves=lookupAllBookMoves
             )
         )
 
@@ -344,4 +360,4 @@ class Controller:
     def rotateBoard(self):
         self.userColor = chess.WHITE if self.userColor == chess.BLACK else chess.BLACK
         self.chess_board.rotate(self.userColor)
-        self.scheduleLookupPositions()
+        self.scheduleLookupPositions(lookupAllBookMoves=True)
