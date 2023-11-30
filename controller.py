@@ -60,7 +60,9 @@ class Controller:
         self.examineTasks = []
         self.userColor = chess.WHITE
 
-        self.game_database = GameDatabase(database_file="games.db")
+        self.game_database = GameDatabase(
+            database_file="games.db", username=config()["lichess"]["username"]
+        )
         self.opening_database = OpeningDatabase(database_file="openings.db")
         self.first.clicked.connect(self.firstMove)
         self.previous.clicked.connect(self.previousMove)
@@ -86,17 +88,17 @@ class Controller:
     async def startEngine(self):
         self.transport, self.engine = await chess.engine.popen_uci("stockfish")
 
-    async def lookupGamePositions(self, positions, username, color):
+    async def lookupGamePositions(self, positions, color):
         self.game_database_pane.setMovesLoading()
-        moves = await self.game_database.lookupPositions(positions, username, color)
+        moves = await self.game_database.lookupPositions(positions, color)
         filtered_moves = [
             move for move in moves if move[2] == (self.userColor == chess.WHITE)
         ]
         self.game_database_pane.setMoves(filtered_moves, self)
 
-    async def lookupOpeningPositions(self, positions, username, color, ply):
+    async def lookupOpeningPositions(self, positions, color, ply):
         self.opening_database_pane.setMovesLoading()
-        moves = await self.opening_database.lookupPositions(positions, username, color)
+        moves = await self.opening_database.lookupPositions(positions, color)
         self.opening_database_pane.setMoves(moves, self)
         if ply == 0:
             # Cut off the first position since it's the starting position.
@@ -188,15 +190,10 @@ class Controller:
     def scheduleLookupPositions(self, positions=None):
         if positions is None:
             positions = [self.game.board.epd()]
-        self.scheduleTask(
-            self.lookupGamePositions(
-                positions, config()["lichess"]["username"], self.userColor
-            )
-        )
+        self.scheduleTask(self.lookupGamePositions(positions, self.userColor))
         self.scheduleTask(
             self.lookupOpeningPositions(
                 positions,
-                config()["lichess"]["username"],
                 self.userColor,
                 self.game.ply,
             )

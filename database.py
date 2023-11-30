@@ -30,14 +30,12 @@ class ChessDatabase(object):
         return await self.con
 
     @abc.abstractmethod
-    async def findMultipleEpdsFromTable(self, cur, user: str, color: chess.Color):
+    async def findMultipleEpdsFromTable(self, cur, color: chess.Color):
         """Method called by findMultipleEpds which should find all the positions using the table
         temp_positions, which that method sets up."""
         pass
 
-    async def findMultipleEpds(
-        self, cur, epds: list[str], user: str, color: chess.Color
-    ):
+    async def findMultipleEpds(self, cur, epds: list[str], color: chess.Color):
         """Given a list of EPDs, find all the lines that contain that position."""
         await cur.executescript(
             """
@@ -51,14 +49,14 @@ class ChessDatabase(object):
             """,
             [(epd,) for epd in epds],
         )
-        await self.findMultipleEpdsFromTable(cur, user, color)
+        await self.findMultipleEpdsFromTable(cur, color)
 
     @abc.abstractmethod
-    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
+    async def findSingleEpd(self, cur, epd: str, color: chess.Color):
         """Given a single EPD, find all the lines that contain that position."""
         pass
 
-    async def populateCache(self, epds: list[str], user: str, color: chess.Color):
+    async def populateCache(self, epds: list[str], color: chess.Color):
         future = asyncio.get_event_loop().create_future()
         for epd in epds:
             self.cache[(color, epd)] = future
@@ -67,9 +65,9 @@ class ChessDatabase(object):
 
         async with con.cursor() as cur:
             if len(epds) > 1:
-                await self.findMultipleEpds(cur, epds, user, color)
+                await self.findMultipleEpds(cur, epds, color)
             else:
-                await self.findSingleEpd(cur, epds[0], user, color)
+                await self.findSingleEpd(cur, epds[0], color)
 
             results = {}
             async for (epd, next_move, count, user_plays_white, *extras) in cur:
@@ -88,7 +86,7 @@ class ChessDatabase(object):
 
         future.set_result(True)
 
-    async def lookupPositions(self, epds: list[str], user: str, color: chess.Color):
+    async def lookupPositions(self, epds: list[str], color: chess.Color):
         unknown_epds = [
             epd for epd in epds if type(self.cache.get((color, epd))) is not tuple
         ]
@@ -97,7 +95,7 @@ class ChessDatabase(object):
         ]
 
         if really_unknown_epds:
-            await self.populateCache(really_unknown_epds, user, color)
+            await self.populateCache(really_unknown_epds, color)
         future_epds = [
             self.cache[(color, epd)]
             for epd in epds
@@ -113,12 +111,13 @@ class ChessDatabase(object):
 
 
 class GameDatabase(ChessDatabase):
-    def __init__(self, database_file):
+    def __init__(self, database_file, *, username=None):
         super(GameDatabase, self).__init__(
             database_file=database_file,
         )
+        self.username = username
 
-    async def findMultipleEpdsFromTable(self, cur, user: str, color: chess.Color):
+    async def findMultipleEpdsFromTable(self, cur, color: chess.Color):
         await cur.execute(
             f"""
             SELECT p.epd,
@@ -137,10 +136,10 @@ class GameDatabase(ChessDatabase):
             GROUP BY p.epd, next_move, user_plays_white
             ORDER BY count DESC
         """,
-            (user,),
+            (self.username,),
         )
 
-    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
+    async def findSingleEpd(self, cur, epd: str, color: chess.Color):
         await cur.execute(
             f"""
             SELECT p.epd,
@@ -158,7 +157,7 @@ class GameDatabase(ChessDatabase):
             GROUP BY next_move, user_plays_white
             ORDER BY count DESC
         """,
-            (user, epd),
+            (self.username, epd),
         )
 
 
@@ -166,9 +165,7 @@ class OpeningDatabase(ChessDatabase):
     def __init__(self, database_file):
         super(OpeningDatabase, self).__init__(database_file=database_file)
 
-    async def findMultipleEpds(
-        self, cur, epds: list[str], user: str, color: chess.Color
-    ):
+    async def findMultipleEpds(self, cur, epds: list[str], color: chess.Color):
         await cur.executescript(
             """
             CREATE TEMPORARY TABLE IF NOT EXISTS temp_positions (epd STRING);
@@ -198,7 +195,7 @@ class OpeningDatabase(ChessDatabase):
             """
         )
 
-    async def findSingleEpd(self, cur, epd: str, user: str, color: chess.Color):
+    async def findSingleEpd(self, cur, epd: str, color: chess.Color):
         await cur.execute(
             f"""
             SELECT p.epd,
