@@ -94,10 +94,20 @@ class Controller:
         ]
         self.game_database_pane.setMoves(filtered_moves, self)
 
-    async def lookupOpeningPositions(self, positions, username, color):
+    async def lookupOpeningPositions(self, positions, username, color, ply):
         self.opening_database_pane.setMovesLoading()
         moves = await self.opening_database.lookupPositions(positions, username, color)
         self.opening_database_pane.setMoves(moves, self)
+        if ply == 0:
+            # Cut off the first position since it's the starting position.
+            positions = positions[1:]
+            self.move_list.setBookMoves(
+                0, self.opening_database.getBookMoves(positions, color)
+            )
+        else:
+            self.move_list.setBookMoves(
+                ply - 1, self.opening_database.getBookMoves(positions, color)
+            )
 
     async def getEngine(self):
         if self.engine:
@@ -185,7 +195,10 @@ class Controller:
         )
         self.scheduleTask(
             self.lookupOpeningPositions(
-                positions, config()["lichess"]["username"], self.userColor
+                positions,
+                config()["lichess"]["username"],
+                self.userColor,
+                self.game.ply,
             )
         )
 

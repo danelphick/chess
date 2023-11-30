@@ -12,6 +12,7 @@ class Game:
     board: chess.Board
     pgn: chess.pgn
     game: chess.pgn.Game
+    ply: int
 
     def __init__(self, board: chess.Board, pgn: chess.pgn.Game):
         self.board = board

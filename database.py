@@ -216,3 +216,6 @@ class OpeningDatabase(ChessDatabase):
             """,
             (epd, int(color == chess.WHITE)),
         )
+
+    def getBookMoves(self, epds: list[str], color: chess.Color):
+        return [len(self.cache.get((color, epd))) > 0 for epd in epds]
