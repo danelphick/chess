@@ -152,7 +152,6 @@ class MoveList(QtWidgets.QScrollArea):
         self.styleMove(new, MoveList.CURRENT_MOVE_STYLE, ensureVisible=True)
 
     def addMove(self, turnAndNumber, move):
-        print(f"addMove({turnAndNumber=})")
         turn, number = turnAndNumber
         row = number - 1
         move_label = self.createClickableLabel(move, turnAndNumber)
@@ -168,7 +167,6 @@ class MoveList(QtWidgets.QScrollArea):
             self.move_grid.addWidget(book_label, row, BLACK_ASSESSMENT_COLUMN)
 
     def removeMoves(self, turnAndNumber):
-        print(f"removeMoves({turnAndNumber=})")
         turn, number = turnAndNumber
         row = number - 1
         if turn == chess.BLACK:
