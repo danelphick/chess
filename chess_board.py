@@ -196,6 +196,36 @@ class ChessBoard(QLabel):
         canvas.fill(Qt.gray)
         self.setPixmap(canvas)
         self.setFixedSize(WIDTH, HEIGHT)
+        painter = QtGui.QPainter(canvas)
+        fm = QtGui.QFontMetrics(painter.font())
+        self.rankAndFileNotationToDraw = []
+        for y in range(0, 8):
+            textToDraw = str(y + 1)
+            rect = fm.boundingRect(textToDraw)
+            self.rankAndFileNotationToDraw.append(
+                (
+                    QtGui.QStaticText(textToDraw),
+                    (LEFT_MARGIN - rect.width()) // 2,
+                    y * SQUARE_SIZE
+                    + HALF_SQUARE_SIZE
+                    + TOP_MARGIN
+                    - rect.height() // 2,
+                )
+            )
+        for x in range(0, 8):
+            textToDraw = chr(x + 65)
+            rect = fm.boundingRect(textToDraw)
+            self.rankAndFileNotationToDraw.append(
+                (
+                    QtGui.QStaticText(textToDraw),
+                    x * SQUARE_SIZE
+                    + HALF_SQUARE_SIZE
+                    + LEFT_MARGIN
+                    - rect.width() // 2,
+                    HEIGHT - (TOP_MARGIN + rect.height()) // 2,
+                )
+            )
+        painter.end()
         self.drawBoard()
         self.dragWidget = None
 
@@ -487,6 +517,9 @@ class ChessBoard(QLabel):
                     )
                     painter.setClipping(False)
 
+        for (text, x, y) in self.rankAndFileNotationToDraw:
+            painter.drawStaticText(x, y, text)
+
         painter.end()
         self.setPixmap(canvas)
 
@@ -539,7 +572,9 @@ class ChessBoard(QLabel):
             self.setLayout(layout)
 
     def promote(self, move, promotion_type):
-        self.moveHandler.move(chess.Move(move.from_square, move.to_square, promotion_type))
+        self.moveHandler.move(
+            chess.Move(move.from_square, move.to_square, promotion_type)
+        )
         self.promotion_window.hide()
 
     def makeMove(self, fromSquare, toSquare, instant=True):
