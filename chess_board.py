@@ -196,41 +196,10 @@ class ChessBoard(QLabel):
         canvas.fill(Qt.gray)
         self.setPixmap(canvas)
         self.setFixedSize(WIDTH, HEIGHT)
-        painter = QtGui.QPainter(canvas)
-        fm = QtGui.QFontMetrics(painter.font())
-        self.rankAndFileNotationToDraw = []
-        for y in range(0, 8):
-            textToDraw = str(y + 1)
-            rect = fm.boundingRect(textToDraw)
-            self.rankAndFileNotationToDraw.append(
-                (
-                    QtGui.QStaticText(textToDraw),
-                    (LEFT_MARGIN - rect.width()) // 2,
-                    y * SQUARE_SIZE
-                    + HALF_SQUARE_SIZE
-                    + TOP_MARGIN
-                    - rect.height() // 2,
-                )
-            )
-        for x in range(0, 8):
-            textToDraw = chr(x + 65)
-            rect = fm.boundingRect(textToDraw)
-            self.rankAndFileNotationToDraw.append(
-                (
-                    QtGui.QStaticText(textToDraw),
-                    x * SQUARE_SIZE
-                    + HALF_SQUARE_SIZE
-                    + LEFT_MARGIN
-                    - rect.width() // 2,
-                    HEIGHT - (TOP_MARGIN + rect.height()) // 2,
-                )
-            )
-        painter.end()
+        # Draw the A-H and 1-8 indicators once as they will never be overdrawn
+        self.drawRankAndFileIndicators()
         self.drawBoard()
         self.dragWidget = None
-
-    def setPieceToMove(self, square):
-        pass
 
     # Methods overridden from DragHandler
     def dragStart(self, pos: QtCore.QPoint) -> None:
@@ -419,6 +388,35 @@ class ChessBoard(QLabel):
         self.lastMove = move
         self.checkSquare = checkSquare
 
+    def drawRankAndFileIndicators(self):
+        canvas = self.pixmap()
+        painter = QtGui.QPainter(canvas)
+        fm = QtGui.QFontMetrics(painter.font())
+        for y in range(0, 8):
+            textToDraw = str(y + 1)
+            rect = fm.boundingRect(textToDraw)
+            painter.drawStaticText(
+                    (LEFT_MARGIN - rect.width()) // 2,
+                    y * SQUARE_SIZE
+                    + HALF_SQUARE_SIZE
+                    + TOP_MARGIN
+                    - rect.height() // 2,
+                    QtGui.QStaticText(textToDraw),
+            )
+        for x in range(0, 8):
+            textToDraw = chr(x + 65)
+            rect = fm.boundingRect(textToDraw)
+            painter.drawStaticText(
+                    x * SQUARE_SIZE
+                    + HALF_SQUARE_SIZE
+                    + LEFT_MARGIN
+                    - rect.width() // 2,
+                    HEIGHT - (TOP_MARGIN + rect.height()) // 2,
+                    QtGui.QStaticText(textToDraw),
+            )
+        painter.end()
+        self.setPixmap(canvas)
+
     def drawBoard(self):
         canvas = self.pixmap()
         painter = QtGui.QPainter(canvas)
@@ -516,9 +514,6 @@ class ChessBoard(QLabel):
                         radius,
                     )
                     painter.setClipping(False)
-
-        for (text, x, y) in self.rankAndFileNotationToDraw:
-            painter.drawStaticText(x, y, text)
 
         painter.end()
         self.setPixmap(canvas)
